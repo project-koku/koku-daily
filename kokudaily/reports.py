@@ -43,6 +43,18 @@ REPORTS = {
         "namespace": "hccm-prod",
         "target": "marketing",
     },
+    "invalid_sources": {
+        "file": "sql/invalid_sources.sql",
+        "target": "engineering",
+    },
+    "orphaned_providers": {
+        "file": "sql/orphaned_providers.sql",
+        "target": "engineering",
+    },
+    "over_48_hours_status_providers": {
+        "file": "sql/over_48_hours_status_providers.sql",
+        "target": "engineering",
+    },
 }
 
 

@@ -1,6 +1,7 @@
 import logging
 import sys
 
+from kokudaily.config import Config
 from kokudaily.reports import run_reports
 from kokudaily.send import email
 
@@ -25,10 +26,13 @@ LOG.info(report_data)
 
 for target, report_dict in report_data.items():
     report_files = []
+    recipients = Config.EMAIL_GROUPS.get(target)
+    if recipients is None:
+        continue
     for report in report_dict.values():
         path = report.get("file")
         if path:
             report_files.append(path)
-    email(attachments=report_files, target=target)
+    email(recipients, attachments=report_files, target=target)
 
 LOG.info("Completed report job.")

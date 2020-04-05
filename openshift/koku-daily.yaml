@@ -76,6 +76,19 @@ objects:
         secret: ${GITHUB_WEBHOOK_SECRET}
       type: GitHub
 
+- apiVersion: v1
+  kind: Secret
+  metadata:
+    labels:
+      app: ${NAME}
+    annotations:
+      template.openshift.io/expose-email_user: "{.data['email_user']}"
+      template.openshift.io/expose-email_password: "{.data['email_password']}"
+    name: ${NAME}-secret
+  stringData:
+    email_user: ${EMAIL_USER}
+    email_password: ${EMAIL_PASSWORD}
+
 - apiVersion: batch/v1beta1
   kind: CronJob
   metadata:
@@ -125,6 +138,20 @@ objects:
                       key: db.password
                       name: koku-db
                       optional: false
+                - name: EMAIL_USER
+                  valueFrom:
+                    secretKeyRef:
+                      key: email_user
+                      name: koku-daily-secret
+                      optional: false
+                - name: EMAIL_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      key: email_password
+                      name: koku-daily-secret
+                      optional: false
+                - name: EMAIL_GROUPS
+                  value: ${EMAIL_GROUPS}
                 - name: NAMESPACE
                   valueFrom:
                     fieldRef:
@@ -201,3 +228,12 @@ parameters:
   name: SOURCE_REPOSITORY_REF
   required: false
   value: master
+- displayName: Email User
+  name: EMAIL_USER
+  required: true
+- displayName: Email Password
+  name: EMAIL_PASSWORD
+  required: true
+- displayName: Email groups for different target reports
+  name: EMAIL_GROUPS
+  required: true

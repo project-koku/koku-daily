@@ -37,3 +37,4 @@ class Config:
             EMAIL_GROUPS = json.loads(EMAIL_GROUPS)
         except:  # noqa: E722
             LOG.error("Invalid EMAIL_GROUPS input. Not JSON.")
+            EMAIL_GROUPS = {}

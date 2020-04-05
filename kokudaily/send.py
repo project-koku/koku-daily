@@ -11,7 +11,7 @@ from kokudaily.config import Config
 LOG = logging.getLogger(__name__)
 
 
-def email(attachments=None, target=""):
+def email(recipients, attachments=None, target=""):
     gmail_user = Config.EMAIL_USER
     gmail_password = Config.EMAIL_PASSWORD
     s = smtplib.SMTP("smtp.gmail.com:587")
@@ -20,14 +20,13 @@ def email(attachments=None, target=""):
 
     msg = MIMEMultipart()
     sender = gmail_user
-    recipients = ["chambrid@redhat.com"]
     subject = (
         f"Cost Management {target.title()} Metrics Report: {Config.NAMESPACE}"
     )
     msg_text = "<p>See attached metrics.</p>"
     msg["Subject"] = subject
     msg["From"] = sender
-    msg["To"] = ", ".join(recipients)
+    msg["To"] = recipients
     if attachments is not None:
         for each_file_path in attachments:
             try:
