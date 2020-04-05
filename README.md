@@ -6,7 +6,7 @@ A python application for gathering daily internal reporting data from a koku dep
 
 To get started developing with koku-daily first clone a local copy of the git repository:
 ```
-git clone https://github.com/chambridge/koku-daily.git
+git clone https://github.com/project-koku/koku-daily.git
 ````
 
 This project is developed uses Pipenv. Many configuration settings can be read in from a ``.env`` file. To configure, do the following:
