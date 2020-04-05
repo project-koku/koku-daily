@@ -1,0 +1,203 @@
+---
+apiVersion: v1
+kind: Template
+metadata:
+  name: koku-daily
+
+objects:
+- apiVersion: "v1"
+  kind: "ImageStream"
+  metadata:
+    name: "ubi7-python36"
+  spec:
+    dockerImageRepository: "registry.access.redhat.com/ubi7/python-36"
+
+- apiVersion: v1
+  kind: ImageStream
+  metadata:
+    name: ${NAME}
+    annotations:
+      description: "Keeps track of changes in the application image"
+  spec:
+    lookupPolicy:
+      local: true
+
+- apiVersion: v1
+  kind: BuildConfig
+  metadata:
+    annotations:
+      description: Defines how to build the application
+      template.alpha.openshift.io/wait-for-ready: "true"
+    labels:
+      name: ${NAME}
+    name: ${NAME}
+  spec:
+    failedBuildsHistoryLimit: 1
+    successfulBuildsHistoryLimit: 2
+    output:
+      to:
+        kind: ImageStreamTag
+        name: ${NAME}:latest
+    resources:
+      requests:
+        memory: ${BUILD_MEMORY_REQUEST}
+        cpu: ${BUILD_CPU_REQUEST}
+      limits:
+        memory: ${BUILD_MEMORY_LIMIT}
+        cpu: ${BUILD_CPU_LIMIT}
+    source:
+      contextDir: ${CONTEXT_DIR}
+      git:
+        ref: ${SOURCE_REPOSITORY_REF}
+        uri: ${SOURCE_REPOSITORY_URL}
+      type: Git
+    strategy:
+      sourceStrategy:
+        env:
+          - name: PIP_INDEX_URL
+            value: ${PIP_INDEX_URL}
+          - name: PIPENV_PYPI_MIRROR
+            value: ${PIPENV_PYPI_MIRROR}
+          - name: ENABLE_PIPENV
+            value: "true"
+          - name: UPGRADE_PIP_TO_LATEST
+            value: "true"
+        from:
+          kind: ImageStreamTag
+          name: ubi7-python36:latest
+          namespace: ${NAMESPACE}
+        forcePull: true
+      type: Source
+    triggers:
+    - type: ConfigChange
+    - imageChange: {}
+      type: ImageChange
+    - github:
+        secret: ${GITHUB_WEBHOOK_SECRET}
+      type: GitHub
+
+- apiVersion: batch/v1beta1
+  kind: CronJob
+  metadata:
+    name: ${NAME}
+  spec:
+    schedule: "0 2 * * *"
+    jobTemplate:
+      spec:
+        template:
+          spec:
+            containers:
+            - name: koku-daily
+              image: koku-daily
+              command: ["python", "app.py"]
+              volumeMounts:
+              - name: ssl-cert
+                mountPath: /etc/ssl/certs
+                readOnly: true
+              env:
+                - name: DATABASE_HOST
+                  valueFrom:
+                    secretKeyRef:
+                      key: db.host
+                      name: koku-db
+                      optional: false
+                - name: DATABASE_PORT
+                  valueFrom:
+                    secretKeyRef:
+                      key: db.port
+                      name: koku-db
+                      optional: false
+                - name: DATABASE_NAME
+                  valueFrom:
+                    secretKeyRef:
+                      key: db.name
+                      name: koku-db
+                      optional: false
+                - name: DATABASE_USER
+                  valueFrom:
+                    secretKeyRef:
+                      key: db.user
+                      name: koku-db
+                      optional: false
+                - name: DATABASE_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      key: db.password
+                      name: koku-db
+                      optional: false
+                - name: NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.namespace
+            restartPolicy: OnFailure
+            volumes:
+            - name: ssl-cert
+              projected:
+                sources:
+                - secret:
+                    name: rds-client-ca
+                    items:
+                      - key: rds-cacert
+                        path: server.pem
+
+parameters:
+- description: The name assigned to all frontend objects defined in this template.
+  displayName: Name
+  name: NAME
+  required: true
+  value: koku-daily
+- description: The OpenShift Namespace where the ImageStream resides.
+  displayName: Namespace
+  name: NAMESPACE
+  required: true
+  value: koku
+- description: Initial amount of memory the build container will request.
+  displayName: Build Memory Request
+  name: BUILD_MEMORY_REQUEST
+  required: true
+  value: 1Gi
+- description: Maximum amount of memory the build container can use.
+  displayName: Build Memory Limit
+  name: BUILD_MEMORY_LIMIT
+  required: true
+  value: 1Gi
+- description: Initial amount of CPU the build container will request.
+  displayName: Build CPU Request
+  name: BUILD_CPU_REQUEST
+  required: true
+  value: 500m
+- description: Maximum amount of CPU the build container can use.
+  displayName: Build CPU Limit
+  name: BUILD_CPU_LIMIT
+  required: true
+  value: '1'
+- description: Set this to the relative path to your project if it is not in the root
+    of your repository.
+  displayName: Context Directory
+  name: CONTEXT_DIR
+  required: false
+- description: The custom PyPi index URL
+  displayName: Custom PyPi Index URL
+  name: PIP_INDEX_URL
+  required: false
+- description: The custom PipEnv PyPi index URL
+  displayName: Custom PipEnv PyPi Index URL
+  name: PIPENV_PYPI_MIRROR
+  required: false
+- description: Github trigger secret.  A difficult to guess string encoded as part
+    of the webhook URL.  Not encrypted.
+  displayName: GitHub Webhook Secret
+  value: webh00k
+  name: GITHUB_WEBHOOK_SECRET
+  required: True
+- description: The URL of the repository with your application source code.
+  displayName: Git Repository URL
+  name: SOURCE_REPOSITORY_URL
+  required: true
+  value: https://github.com/chambridge/koku-daily.git
+- description: Set this to a branch name, tag or other ref of your repository if you
+    are not using the default branch.
+  displayName: Git Reference
+  name: SOURCE_REPOSITORY_REF
+  required: false
+  value: master
