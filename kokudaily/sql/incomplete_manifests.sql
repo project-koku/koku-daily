@@ -1,4 +1,7 @@
-SELECT    p.uuid as provider_uuid,
+SELECT    c.id as customer_id,
+          c.schema_name,
+          p.uuid as provider_uuid,
+          p.type as source_type,
           rm.assembly_id,
           rm.manifest_creation_datetime,
           rm.manifest_updated_datetime,
@@ -11,9 +14,13 @@ SELECT    p.uuid as provider_uuid,
 FROM      public.reporting_common_costusagereportmanifest AS rm
 JOIN      public.api_provider AS p
 ON        rm.provider_id = p.uuid
+JOIN      public.api_customer AS c
+ON        p.customer_id = c.id
 LEFT JOIN public.reporting_common_costusagereportstatus AS rs
 ON        rm.id = rs.manifest_id
 WHERE     num_processed_files != num_total_files
 AND       manifest_creation_datetime >= current_date - INTERVAL '1 day'
-ORDER BY  manifest_creation_datetime DESC
+ORDER BY  c.id,
+          p.type,
+          rm.manifest_creation_datetime
 ;
