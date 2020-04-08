@@ -55,6 +55,10 @@ REPORTS = {
         "file": "sql/over_48_hours_status_providers.sql",
         "target": "engineering",
     },
+    "incomplete_manifests": {
+        "file": "sql/incomplete_manifests.sql"
+        "target": "engineering",
+    },
 }
 
 
