@@ -27,7 +27,6 @@ SELECT   count (DISTINCT t.uuid),
 FROM     PUBLIC.api_provider t
 JOIN     filtered_customers AS fc
 ON       t.customer_id = fc.id
-WHERE    t.setup_complete = 'True'
 GROUP BY fc.account_id,
          fc.domain,
          t.type,
