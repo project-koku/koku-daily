@@ -56,7 +56,7 @@ REPORTS = {
         "target": "engineering",
     },
     "incomplete_manifests": {
-        "file": "sql/incomplete_manifests.sql"
+        "file": "sql/incomplete_manifests.sql",
         "target": "engineering",
     },
 }
