@@ -59,6 +59,10 @@ REPORTS = {
         "file": "sql/incomplete_manifests.sql",
         "target": "engineering",
     },
+    "empty_tenants": {
+        "file": "sql/empty_tenants.sql",
+        "target": "engineering",
+    },
 }
 
 
