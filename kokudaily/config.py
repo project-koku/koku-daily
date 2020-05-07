@@ -3,8 +3,10 @@ import json
 import logging
 import os
 
+from prometheus_client import CollectorRegistry
 
 LOG = logging.getLogger(__name__)
+REGISTRY = CollectorRegistry()
 
 
 # pylint: disable=too-few-public-methods,simplifiable-if-expression
@@ -38,3 +40,5 @@ class Config:
         except:  # noqa: E722
             LOG.error("Invalid EMAIL_GROUPS input. Not JSON.")
             EMAIL_GROUPS = {}
+
+    PROMETHEUS_PUSH_GATEWAY = os.getenv("PROMETHEUS_PUSH_GATEWAY")

@@ -1,5 +1,4 @@
-SELECT cust.*,
-       t.id AS tenant_id
+SELECT count (DISTINCT cust.*)
 FROM   PUBLIC.api_customer AS cust
        LEFT JOIN PUBLIC.api_provider p
               ON cust.id = p.customer_id

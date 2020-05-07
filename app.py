@@ -1,9 +1,12 @@
 import logging
 import sys
 
-from kokudaily.config import Config
-from kokudaily.reports import run_reports
-from kokudaily.send import email
+import dash
+import dash_core_components as dcc
+import dash_html_components as html
+from kokudaily.charts import display_engineering
+from kokudaily.charts import display_index
+from kokudaily.charts import display_marketing
 
 root = logging.getLogger()
 root.setLevel(logging.INFO)
@@ -17,22 +20,41 @@ handler.setFormatter(formatter)
 root.addHandler(handler)
 
 LOG = logging.getLogger(__name__)
+CSS = ["https://codepen.io/chriddyp/pen/bWLwgP.css"]
+CHART_PATHS = {
+    "/": {"name": "Index", "view": display_index},
+    "/marketing": {"name": "Marketing", "view": display_marketing},
+    "/engineering": {"name": "Engineering", "view": display_engineering},
+}
 
 
-LOG.info("Starting report job.")
+LOG.info("Starting server.")
+app = dash.Dash(__name__, external_stylesheets=CSS)
 
-report_data = run_reports()
-LOG.info(report_data)
+div_list = []
+# represents the URL bar, doesn't render anything
+div_list.append(dcc.Location(id="url", refresh=False))
 
-for target, report_dict in report_data.items():
-    report_files = []
-    recipients = Config.EMAIL_GROUPS.get(target)
-    if recipients is None:
-        continue
-    for report in report_dict.values():
-        path = report.get("file")
-        if path:
-            report_files.append(path)
-    email(recipients, attachments=report_files, target=target)
+for key, value in CHART_PATHS.items():
+    div_list.append(dcc.Link(value.get("name", "Missing Link Name"), href=key))
+    div_list.append(html.Br())
 
-LOG.info("Completed report job.")
+# content will be rendered in this element
+div_list.append(html.Div(id="page-content"))
+app.layout = html.Div(div_list)
+
+
+@app.callback(
+    dash.dependencies.Output("page-content", "children"),
+    [dash.dependencies.Input("url", "pathname")],
+)
+def display_page(pathname):
+    LOG.info(f"Hitting path {pathname}.")
+    view = CHART_PATHS.get(pathname, {}).get("view")
+    if view:
+        return view()
+    else:
+        return html.Div([html.H3(f"Unknown page {pathname}")])
+
+
+app.run_server(debug=True)

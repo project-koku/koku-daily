@@ -102,7 +102,7 @@ objects:
             containers:
             - name: koku-daily
               image: koku-daily
-              command: ["python", "app.py"]
+              command: ["python", "job.py"]
               volumeMounts:
               - name: ssl-cert
                 mountPath: /etc/ssl/certs
@@ -152,6 +152,8 @@ objects:
                       optional: false
                 - name: EMAIL_GROUPS
                   value: ${EMAIL_GROUPS}
+                - name: PROMETHEUS_PUSH_GATEWAY
+                  value: ${PROMETHEUS_PUSH_GATEWAY}
                 - name: NAMESPACE
                   valueFrom:
                     fieldRef:
@@ -236,4 +238,7 @@ parameters:
   required: true
 - displayName: Email groups for different target reports
   name: EMAIL_GROUPS
+  required: true
+- displayName: PROMETHEUS_PUSH_GATEWAY
+  name: PROMETHEUS_PUSH_GATEWAY
   required: true
