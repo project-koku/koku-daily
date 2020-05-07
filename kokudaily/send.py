@@ -78,11 +78,11 @@ def prometheus(target, report_name, **report):
                             label_value = Config.NAMESPACE
                         else:
                             label_value = data_dict.get(label)
-                        if label_value:
+                        if label_value is not None:
                             gauge_labels[label] = str(label_value)
                     LOG.info(
-                        f"Setting gauge {metric_name} with labels"
-                        f" {gauge_labels} and value {value}."
+                        f"Setting gauge {metric_name} with labels {labels}"
+                        f" with {gauge_labels} and value {value}."
                     )
                     gauge.labels(**gauge_labels).set(int(value))
         else:
