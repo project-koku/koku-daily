@@ -12,9 +12,9 @@ def display_marketing():
     LOG.info("Displaying marketing metrics.")
 
     report_data = run_reports(filter_target="marketing")
-    eng_metrics = report_data.get("marketing")
+    mkt_metrics = report_data.get("marketing", {})
     page_div = [html.H3("Marketing")]
-    for report_name, report_data in eng_metrics.items():
+    for report_name, report_data in mkt_metrics.items():
         columns = report_data.get("columns", [])
         data = report_data.get("data", [])
         page_div.append(html.H4(report_name))

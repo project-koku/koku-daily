@@ -12,7 +12,7 @@ def display_engineering():
     LOG.info("Displaying engineering metrics.")
 
     report_data = run_reports(filter_target="engineering")
-    eng_metrics = report_data.get("engineering")
+    eng_metrics = report_data.get("engineering", {})
     page_div = [html.H3("Engineering")]
     for report_name, report_data in eng_metrics.items():
         columns = report_data.get("columns", [])
