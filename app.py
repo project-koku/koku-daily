@@ -7,6 +7,7 @@ import dash_html_components as html
 from kokudaily.charts import display_engineering
 from kokudaily.charts import display_index
 from kokudaily.charts import display_marketing
+from kokudaily.config import Config
 
 root = logging.getLogger()
 root.setLevel(logging.INFO)
@@ -57,4 +58,4 @@ def display_page(pathname):
         return html.Div([html.H3(f"Unknown page {pathname}")])
 
 
-app.run_server(debug=True)
+app.run_server(debug=True, port=Config.APP_PORT)

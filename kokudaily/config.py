@@ -42,3 +42,9 @@ class Config:
             EMAIL_GROUPS = {}
 
     PROMETHEUS_PUSH_GATEWAY = os.getenv("PROMETHEUS_PUSH_GATEWAY")
+    APP_PORT = os.getenv("APP_PORT", "8080")
+    try:
+        APP_PORT = int(APP_PORT)
+    except ValueError:
+        LOG.info("Defined APP_PORT was not an integer; defaulting to 8080.")
+        APP_PORT = 8080
