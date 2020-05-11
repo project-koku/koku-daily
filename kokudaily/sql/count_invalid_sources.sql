@@ -1,12 +1,6 @@
-SELECT t.account_id,
-       t.source_id,
-       t.name,
-       t.source_uuid,
-       t.koku_uuid,
-       t.source_type,
-       t.authentication,
-       t.billing_source,
-       t.status
+SELECT count (DISTINCT t.source_id),
+       COALESCE(t.account_id, 'unknown') as account_id,
+       COALESCE(NULLIF(t.source_type, ''), 'unknown') as source_type
 FROM   PUBLIC.api_sources t
 WHERE  ( t.koku_uuid IS NULL
           OR t.koku_uuid = '' )
@@ -14,3 +8,4 @@ WHERE  ( t.koku_uuid IS NULL
               OR t.account_id = '' )
         OR ( t.source_type IS NULL
               OR t.source_type = '' )
+GROUP BY t.account_id, t.source_type
