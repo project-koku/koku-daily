@@ -104,6 +104,19 @@ REPORTS = {
             "labels": ["account_id", "source_type"],
         },
     },
+    "active_providers": {
+        "file": "sql/active_providers.sql",
+        "target": "engineering",
+    },
+    "count_active_providers": {
+        "file": "sql/count_active_providers.sql",
+        "target": "prometheus",
+        "prometheus": {
+            "type": "Gauge",
+            "value": "count",
+            "labels": ["account_id", "source_type"],
+        },
+    },
     "incomplete_manifests": {
         "file": "sql/incomplete_manifests.sql",
         "target": "engineering",
