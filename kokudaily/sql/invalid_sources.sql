@@ -4,8 +4,6 @@ SELECT t.account_id,
        t.source_uuid,
        t.koku_uuid,
        t.source_type,
-       t.authentication,
-       t.billing_source,
        t.status
 FROM   PUBLIC.api_sources t
 WHERE  ( t.koku_uuid IS NULL
