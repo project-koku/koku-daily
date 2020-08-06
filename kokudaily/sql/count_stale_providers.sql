@@ -1,11 +1,11 @@
 CREATE TEMPORARY TABLE manifest_temp AS (
     SELECT  DISTINCT ON(provider_id)
             provider_id,
-            billing_period_start_datetime,
+            id,
             manifest_completed_datetime
     FROM PUBLIC.reporting_common_costusagereportmanifest
     ORDER BY provider_id,
-             billing_period_start_datetime
+             id
     DESC NULLS LAST
 );
 
