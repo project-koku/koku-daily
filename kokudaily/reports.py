@@ -1,12 +1,13 @@
 import copy
 import csv
+import logging
 import os
 from tempfile import gettempdir
 
 from kokudaily.config import Config
 from kokudaily.engine import DB_ENGINE
 
-
+LOG = logging.getLogger(__name__)
 REPORTS = {
     "count_filtered_users": {
         "file": "sql/count_filtered_users.sql",
@@ -166,6 +167,7 @@ def run_reports(filter_target=None):
             report_sql_file = report_sql_obj.get("file")
             valid_target = (not filter_target) or target == filter_target
             if namespace == Config.NAMESPACE and valid_target:
+                LOG.info(f"report_sql_file={report_sql_file}.")
                 report_sql = _read_sql(report_sql_file)
                 rs = con.execute(report_sql)
                 keys = con.execute(report_sql).keys()
