@@ -131,3 +131,4 @@ dmypy.json
 openshift/parameters.properties
 
 .vscode/
+*.sw[po]
