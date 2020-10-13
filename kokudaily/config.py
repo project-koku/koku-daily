@@ -21,9 +21,7 @@ class Config:
     DB_HOST = os.getenv("DATABASE_HOST", "localhost")
     DB_PORT = os.getenv("DATABASE_PORT", "15432")
 
-    SQLALCHEMY_DATABASE_URI = (
-        f"{DB_ENGINE}://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-    )
+    SQLALCHEMY_DATABASE_URI = f"{DB_ENGINE}://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
@@ -42,7 +40,13 @@ class Config:
             EMAIL_GROUPS = {}
 
     PROMETHEUS_PUSH_GATEWAY = os.getenv("PROMETHEUS_PUSH_GATEWAY")
+
+    APP_HOST = os.getenv("APP_HOST", "127.0.0.1")
     APP_PORT = os.getenv("APP_PORT", "8080")
+
+    if APP_HOST != "127.0.0.1":
+        LOG.info("Listening on %s:%s. This might be insecure.", APP_HOST, APP_PORT)
+
     try:
         APP_PORT = int(APP_PORT)
     except ValueError:
