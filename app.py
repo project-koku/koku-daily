@@ -58,4 +58,4 @@ def display_page(pathname):
         return html.Div([html.H3(f"Unknown page {pathname}")])
 
 
-app.run_server(debug=True, port=Config.APP_PORT)
+app.run_server(debug=True, host=Config.APP_HOST, port=Config.APP_PORT)

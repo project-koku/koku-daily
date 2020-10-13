@@ -1,5 +1,5 @@
 """SQLAlchemy database engine creation."""
-from os import path
+import os
 
 import sqlalchemy
 from kokudaily.config import Config
@@ -17,7 +17,11 @@ def _create_engine_kwargs():
         "pool_size": Config.SQLALCHEMY_POOL_SIZE,
     }
     cert_file = "/etc/ssl/certs/server.pem"
-    if path.exists(cert_file) and path.isfile(cert_file):
+    if (
+        os.path.exists(cert_file)
+        and os.path.isfile(cert_file)
+        and os.stat(cert_file).st_size > 0
+    ):
         kwargs["connect_args"] = {
             "sslmode": "verify-full",
             "sslrootcert": cert_file,

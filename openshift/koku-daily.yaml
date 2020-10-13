@@ -89,6 +89,15 @@ objects:
     email_user: ${EMAIL_USER}
     email_password: ${EMAIL_PASSWORD}
 
+- apiVersion: v1
+  kind: Secret
+  metadata:
+    labels:
+      app: ${NAME}
+    name: rds-client-ca
+  stringData:
+    rds-cacert: "SSL CERTIFICATE GOES HERE"
+
 - apiVersion: batch/v1beta1
   kind: CronJob
   metadata:
@@ -169,6 +178,114 @@ objects:
                       - key: rds-cacert
                         path: server.pem
 
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    name: ${NAME}-ui
+  spec:
+    replicas: ${{REPLICAS}}
+    selector:
+      name: koku-daily-ui
+    template:
+      metadata:
+        labels:
+          app: koku
+          name: koku-daily-ui
+        name: koku-daily-ui
+      spec:
+        containers:
+        - name: koku-daily-ui
+          image: koku-daily
+          imagePullPolicy: Always
+          command: ["python", "app.py"]
+          volumeMounts:
+          - name: ssl-cert
+            mountPath: /etc/ssl/certs
+            readOnly: true
+          env:
+            - name: APP_HOST
+              value: '0.0.0.0'
+            - name: APP_PORT
+              value: '8080'
+            - name: DATABASE_HOST
+              valueFrom:
+                secretKeyRef:
+                  key: db.host
+                  name: koku-db
+                  optional: false
+            - name: DATABASE_PORT
+              valueFrom:
+                secretKeyRef:
+                  key: db.port
+                  name: koku-db
+                  optional: false
+            - name: DATABASE_NAME
+              valueFrom:
+                secretKeyRef:
+                  key: db.name
+                  name: koku-db
+                  optional: false
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  key: db.user
+                  name: koku-db
+                  optional: false
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: db.password
+                  name: koku-db
+                  optional: false
+            - name: EMAIL_USER
+              valueFrom:
+                secretKeyRef:
+                  key: email_user
+                  name: koku-daily-secret
+                  optional: false
+            - name: EMAIL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: email_password
+                  name: koku-daily-secret
+                  optional: false
+            - name: EMAIL_GROUPS
+              value: ${EMAIL_GROUPS}
+            - name: PROMETHEUS_PUSH_GATEWAY
+              value: ${PROMETHEUS_PUSH_GATEWAY}
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+        restartPolicy: Always
+        volumes:
+        - name: ssl-cert
+          projected:
+            sources:
+            - secret:
+                name: rds-client-ca
+                items:
+                  - key: rds-cacert
+                    path: server.pem
+
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      description: Exposes and load balances the application pods
+    name: koku-daily
+  spec:
+    ports:
+    - name: 8080-tcp
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    selector:
+      name: koku-daily
+
 parameters:
 - description: The name assigned to all frontend objects defined in this template.
   displayName: Name
@@ -242,3 +359,8 @@ parameters:
 - displayName: PROMETHEUS_PUSH_GATEWAY
   name: PROMETHEUS_PUSH_GATEWAY
   required: true
+- description: The number of replicas to keep
+  displayName: Replica minimum
+  name: REPLICAS
+  required: true
+  value: '0'
