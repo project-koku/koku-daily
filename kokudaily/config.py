@@ -52,3 +52,5 @@ class Config:
     except ValueError:
         LOG.info("Defined APP_PORT was not an integer; defaulting to 8080.")
         APP_PORT = 8080
+
+    APP_URL_PREFIX = os.getenv("APP_URL_PREFIX", "")
