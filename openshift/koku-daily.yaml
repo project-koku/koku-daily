@@ -207,6 +207,8 @@ objects:
               value: '0.0.0.0'
             - name: APP_PORT
               value: '8080'
+            - name: APP_URL_PREFIX
+              value: ${APP_URL_PREFIX}
             - name: DATABASE_HOST
               valueFrom:
                 secretKeyRef:
@@ -284,7 +286,7 @@ objects:
       protocol: TCP
       targetPort: 8080
     selector:
-      name: koku-daily
+      name: koku-daily-ui
 
 parameters:
 - description: The name assigned to all frontend objects defined in this template.
@@ -364,3 +366,6 @@ parameters:
   name: REPLICAS
   required: true
   value: '0'
+- description: The URL prefix used by the application UI
+  displayName: URL prefix
+  name: APP_URL_PREFIX
