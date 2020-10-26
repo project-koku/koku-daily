@@ -24,7 +24,7 @@ REQUIRES = [
                         minute=0,
                         second=0,
                         microsecond=0,
-                        tzinro=UTC,
+                        tzinfo=UTC,
                     )
                     - relativedelta(months=1),
                     "end_date": datetime.datetime.now().replace(
@@ -33,10 +33,10 @@ REQUIRES = [
                         minute=0,
                         second=0,
                         microsecond=0,
-                        tzinro=UTC,
+                        tzinfo=UTC,
                     )
                     + relativedelta(months=1),
-                    "provider_types": ["OCP"],
+                    "provider_types": ["OCP"],  # MUST be a list!
                 },
             }
         ],

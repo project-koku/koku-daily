@@ -9,12 +9,14 @@ create temporary table if not exists __cust_size_report (
     project_count bigint,
     pod_count bigint,
     tag_count bigint,
-    raw_lineitem_count bigint
+    raw_lineitem_count bigint,
+    primary key (customer, provider_id, report_month)
 );
 -- loop construct
 do $BODY$
 declare
     schema_rec record;
+    -- OCP data gather per-schema
     stmt_tmpl text = '
 insert
   into __cust_size_report (
@@ -28,7 +30,7 @@ insert
             tag_count,
             raw_lineitem_count
         )
-select ''%1$s'' as "customer",
+select ''%%1$s'' as "customer",
         rpp.provider_id as "provider_id",
         date_trunc(''month'', rp.interval_start)::date as "report_month",
         count(distinct rpp.cluster_id) as "cluster_count",
@@ -38,14 +40,14 @@ select ''%1$s'' as "customer",
         max(rpml.tag_count) as "tag_count",
         count(*) as "raw_lineitem_count"
         -- starting with line item as we need the data ingestion counts
-  from %1$s.reporting_ocpusagelineitem ro
+  from %%1$s.reporting_ocpusagelineitem ro
         -- usage report has the usage bounds
-  join %1$s.reporting_ocpusagereport rp
+  join %%1$s.reporting_ocpusagereport rp
     on rp.id = ro.report_id
-    and rp.interval_start < %(start_time)s::timestamptz  -- start must be < end bounds as end bounds is start of next month
-    and rp.interval_end >= %(end_time)s::timestamptz     -- end must be >= start bounds
+    and rp.interval_start < ''%%3$s''::timestamptz  -- start must be < end bounds as end bounds is start of next month
+    and rp.interval_end >= ''%%2$s''::timestamptz     -- end must be >= start bounds
         -- report period has the provider and cluster
-  join %1$s.reporting_ocpusagereportperiod rpp
+  join %%1$s.reporting_ocpusagereportperiod rpp
     on rpp.id = ro.report_period_id
         -- transformations to get tag counts
   join (
@@ -58,14 +60,14 @@ select ''%1$s'' as "customer",
                   select distinct
                           ruls.report_period_id,
                           key || ''|'' || uv.value as "tag"
-                    from %1$s.reporting_ocpusagepodlabel_summary ruls
+                    from %%1$s.reporting_ocpusagepodlabel_summary ruls
                     left join lateral (select unnest(ruls.values)) as uv(value)
                       on true
                     union
                   select distinct
                           rsls.report_period_id,
                           key || ''|'' || sv.value as "tag"
-                    from %1$s.reporting_ocpstoragevolumelabel_summary rsls
+                    from %%1$s.reporting_ocpstoragevolumelabel_summary rsls
                     left join lateral (select unnest(rsls.values)) as sv(value)
                       on true
                 ) rpta(report_period_id, tag)
@@ -89,14 +91,10 @@ begin
           join public.api_provider p
             on p.customer_id = c.id
             and p."type" = any( %(provider_types)s )
-          left
-          join pg_catalog.pg_stat_user_tables psut
-            on psut.schemaname = n.nspname
-            and psut.relname = 'reporting_ocpusagelineitem'
-          where t.schema_name like 'acct%'
+          where t.schema_name ~ '^acct'
           order
-            by psut.n_live_tup desc
+            by t.schema_name
     loop
-        execute format(stmt_tmpl, schema_rec.schema_name);
+        execute format(stmt_tmpl, schema_rec.schema_name, %(start_time)s, %(end_time)s);
     end loop;
 end $BODY$ language plpgsql;
