@@ -7,10 +7,12 @@ select c.customer,
        c.project_count,
        c.pod_count,
        c.tag_count,
-       p.raw_lineitem_count as prev_month_lineitem_count,
+       coalesce(p.raw_lineitem_count, 0) as prev_month_lineitem_count,
        c.raw_lineitem_count as curr_month_lineitem_count,
-       c.raw_lineitem_count - p.raw_lineitem_count as lineitem_change_count,
-       round(c.raw_lineitem_count::numeric / coalesce(p.raw_lineitem_count, 0)::numeric, 4) as lineitem_change_pct
+       c.raw_lineitem_count - coalesce(p.raw_lineitem_count, 0) as lineitem_change_count,
+       case when p.raw_lineitem_count is null then 1::numeric
+            else round(c.raw_lineitem_count::numeric / p.raw_lineitem_count::numeric, 4)
+       end::numeric as lineitem_change_pct
   from (
            -- current month view
            select m.customer,

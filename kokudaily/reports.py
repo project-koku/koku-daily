@@ -18,7 +18,7 @@ REQUIRES = [
                 "file": "sql/cust_size_report_setup.sql",
                 "status": "",
                 "sql_parameters": {
-                    "start_date": datetime.datetime.now().replace(
+                    "start_time": datetime.datetime.now().replace(
                         day=1,
                         hour=0,
                         minute=0,
@@ -27,7 +27,7 @@ REQUIRES = [
                         tzinfo=UTC,
                     )
                     - relativedelta(months=1),
-                    "end_date": datetime.datetime.now().replace(
+                    "end_time": datetime.datetime.now().replace(
                         day=1,
                         hour=0,
                         minute=0,
@@ -213,8 +213,7 @@ def run_reports(filter_target=None):
                     if task_file:
                         LOG.info(f"    Executing setup task {task_file}...")
                         task_sql = _read_sql(task_file)
-                        cur = con.execute(task_sql, task_parameters)
-                        task["results"] = cur.fetchall()
+                        con.execute(task_sql, task_parameters)
                     task["status"] = "complete"
 
         for report_name, report_sql_obj in REPORTS.items():
@@ -255,8 +254,7 @@ def run_reports(filter_target=None):
                 if task_file:
                     LOG.info(f"    Executing teardown task {task_file}...")
                     task_sql = _read_sql(task_file)
-                    cur = con.execute(task_sql)
-                    task["results"] = cur.fetchall()
+                    con.execute(task_sql)
                 task["status"] = "complete"
 
     return report_data

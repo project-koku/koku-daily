@@ -9,9 +9,9 @@ create temporary table if not exists __cust_size_report (
     project_count bigint,
     pod_count bigint,
     tag_count bigint,
-    raw_lineitem_count bigint,
-    primary key (customer, provider_id, report_month)
+    raw_lineitem_count bigint
 );
+create index ix__cust_size_report on __cust_size_report (customer, provider_id, report_month);
 -- loop construct
 do $BODY$
 declare
