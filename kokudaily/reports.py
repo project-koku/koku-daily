@@ -73,8 +73,23 @@ REPORTS = {
         "target": "marketing",
         "prometheus": {"type": "Gauge", "value": "count"},
     },
+    "count_customers_by_setup_state": {
+        "file": "sql/count_customers_by_setup_state.sql",
+        "namespace": "hccm-prod",
+        "target": "marketing",
+    },
     "list_filtered_accounts": {
         "file": "sql/list_filtered_accounts.sql",
+        "namespace": "hccm-prod",
+        "target": "marketing",
+    },
+    "list_filtered_accounts_with_new_source_last_7_days": {
+        "file": "sql/list_filtered_accounts_with_new_source_last_7_days.sql",
+        "namespace": "hccm-prod",
+        "target": "marketing",
+    },
+    "count_providers_by_type": {
+        "file": "sql/count_providers_by_type.sql",
         "namespace": "hccm-prod",
         "target": "marketing",
     },
