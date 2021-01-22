@@ -9,6 +9,8 @@ psycopg2-binary = ">=2.7.0"
 sqlalchemy = "==1.3.3"
 dash = "*"
 prometheus-client = "*"
+python-dateutil = ">=2.8"
+pytz = "*"
 
 [dev-packages]
 
