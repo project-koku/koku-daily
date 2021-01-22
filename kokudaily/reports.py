@@ -1,14 +1,56 @@
-import copy
 import csv
+import datetime
 import logging
 import os
 from tempfile import gettempdir
 
+from dateutil.relativedelta import relativedelta
 from kokudaily.config import Config
 from kokudaily.engine import DB_ENGINE
+from pytz import UTC
 
 LOG = logging.getLogger(__name__)
+REQUIRES = [
+    {
+        # setup, teardown needed for customer size report(s)
+        "setup": [
+            {
+                "file": "sql/cust_size_report_setup.sql",
+                "status": "",
+                "sql_parameters": {
+                    "start_time": datetime.datetime.now().replace(
+                        day=1,
+                        hour=0,
+                        minute=0,
+                        second=0,
+                        microsecond=0,
+                        tzinfo=UTC,
+                    )
+                    - relativedelta(months=1),
+                    "end_time": datetime.datetime.now().replace(
+                        day=1,
+                        hour=0,
+                        minute=0,
+                        second=0,
+                        microsecond=0,
+                        tzinfo=UTC,
+                    )
+                    + relativedelta(months=1),
+                    "provider_types": ["OCP"],  # MUST be a list!
+                },
+            }
+        ],
+        "teardown": [
+            {"file": "sql/cust_size_report_teardown.sql", "status": ""}
+        ],
+    }
+]
+
 REPORTS = {
+    "cust_size_report": {
+        "file": "sql/cust_size_report.sql",
+        "target": "engineering",
+    },
     "count_filtered_users": {
         "file": "sql/count_filtered_users.sql",
         "namespace": "hccm-prod",
@@ -31,8 +73,23 @@ REPORTS = {
         "target": "marketing",
         "prometheus": {"type": "Gauge", "value": "count"},
     },
+    "count_customers_by_setup_state": {
+        "file": "sql/count_customers_by_setup_state.sql",
+        "namespace": "hccm-prod",
+        "target": "marketing",
+    },
     "list_filtered_accounts": {
         "file": "sql/list_filtered_accounts.sql",
+        "namespace": "hccm-prod",
+        "target": "marketing",
+    },
+    "list_filtered_accounts_with_new_source_last_7_days": {
+        "file": "sql/list_filtered_accounts_with_new_source_last_7_days.sql",
+        "namespace": "hccm-prod",
+        "target": "marketing",
+    },
+    "count_providers_by_type": {
+        "file": "sql/count_providers_by_type.sql",
         "namespace": "hccm-prod",
         "target": "marketing",
     },
@@ -161,6 +218,19 @@ def run_reports(filter_target=None):
     temp_dir = os.path.join(tmp, "reports")
     os.makedirs(temp_dir, exist_ok=True)
     with db.connect() as con:
+        # Do any setup needed
+        LOG.info("Running setup...")
+        for require in REQUIRES:
+            for task in require["setup"]:
+                if task["status"] != "complete":
+                    task_file = task["file"]
+                    task_parameters = task.get("sql_parameters")
+                    if task_file:
+                        LOG.info(f"    Executing setup task {task_file}...")
+                        task_sql = _read_sql(task_file)
+                        con.execute(task_sql, task_parameters)
+                    task["status"] = "complete"
+
         for report_name, report_sql_obj in REPORTS.items():
             namespace = report_sql_obj.get("namespace", Config.NAMESPACE)
             target = report_sql_obj.get("target", Config.NAMESPACE)
@@ -169,8 +239,9 @@ def run_reports(filter_target=None):
             if namespace == Config.NAMESPACE and valid_target:
                 LOG.info(f"report_sql_file={report_sql_file}.")
                 report_sql = _read_sql(report_sql_file)
-                rs = con.execute(report_sql)
-                keys = con.execute(report_sql).keys()
+                report_sql_params = report_sql_obj.get("sql_parameters")
+                rs = con.execute(report_sql, report_sql_params)
+                keys = rs.keys()
                 data = []
                 data_dicts = []
                 tempfile = os.path.join(temp_dir, f"{report_name}.csv")
@@ -179,13 +250,8 @@ def run_reports(filter_target=None):
                     writer.writerow(keys)
                     for row in rs:
                         writer.writerow(row)
-                        row_copy = copy.deepcopy(row)
-                        data.append(row_copy)
-                        row_dict = {}
-                        for idx, row_item in enumerate(row):
-                            column = keys[idx]
-                            row_dict[column] = row_item
-                        data_dicts.append(row_dict)
+                        data.append(row)
+                        data_dicts.append(dict(row))
                 target_obj = report_data.get(target, {})
                 target_obj[report_name] = {
                     "data": data,
@@ -194,5 +260,16 @@ def run_reports(filter_target=None):
                     "data_dicts": data_dicts,
                 }
                 report_data[target] = target_obj
+
+        # tear down any setups
+        LOG.info("Running teardown...")
+        for require in REQUIRES:
+            for task in require["teardown"]:
+                task_file = task["file"]
+                if task_file:
+                    LOG.info(f"    Executing teardown task {task_file}...")
+                    task_sql = _read_sql(task_file)
+                    con.execute(task_sql)
+                task["status"] = "complete"
 
     return report_data
