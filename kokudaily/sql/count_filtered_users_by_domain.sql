@@ -1,11 +1,9 @@
- WITH cust_non_redhat AS (
-    SELECT t.customer_id,
-           array_agg(DISTINCT substring(t.email from '@(.*)$')) AS domain
-    FROM   PUBLIC.api_user t
-    WHERE  substring(t.email FROM '@(.*)$') != 'redhat.com'
-    GROUP BY t.customer_id
-),
-filtered_customers AS
+ WITH cust_non_redhat AS
+(
+                SELECT DISTINCT t.customer_id,
+                                substring(t.email from '@(.*)$') AS domain
+                FROM            PUBLIC.api_user t
+                WHERE           substring(t.email FROM '@(.*)$') != 'redhat.com' ), filtered_customers AS
 (
          SELECT   c.id,
                   c.account_id,
@@ -21,9 +19,9 @@ filtered_customers AS
                                        '6289401')
          GROUP BY c.id,
                   cnr.domain )
-SELECT   count (DISTINCT t.uuid),
-         t.setup_complete
-FROM     PUBLIC.api_provider t
+SELECT   count (DISTINCT t.username),
+         fc.domain
+FROM     PUBLIC.api_user t
 JOIN     filtered_customers AS fc
 ON       t.customer_id = fc.id
-GROUP BY t.setup_complete
+GROUP BY fc.domain
