@@ -1,8 +1,9 @@
  WITH cust_non_redhat AS (
-    SELECT DISTINCT t.customer_id,
-                    substring(t.email from '@(.*)$') AS domain
-    FROM            PUBLIC.api_user t
-    WHERE           substring(t.email FROM '@(.*)$') != 'redhat.com'
+    SELECT t.customer_id,
+           array_agg(DISTINCT substring(t.email from '@(.*)$')) AS domain
+    FROM   PUBLIC.api_user t
+    WHERE  substring(t.email FROM '@(.*)$') != 'redhat.com'
+    GROUP BY t.customer_id
 ),
 filtered_customers AS (
     SELECT   c.id,
@@ -47,6 +48,6 @@ FROM (
         JOIN     filtered_customers AS fc
         ON       p.customer_id = fc.id
         GROUP BY fc.account_id,
-                fc.domain
+                 fc.domain
     ) AS c
 ) as s

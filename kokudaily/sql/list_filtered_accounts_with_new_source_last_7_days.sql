@@ -1,8 +1,9 @@
 WITH cust_non_redhat AS (
-    SELECT DISTINCT t.customer_id,
-                    substring(t.email from '@(.*)$') AS domain
-    FROM            PUBLIC.api_user t
-    WHERE           substring(t.email FROM '@(.*)$') != 'redhat.com'
+    SELECT t.customer_id,
+           array_agg(DISTINCT substring(t.email from '@(.*)$')) AS domain
+    FROM   PUBLIC.api_user t
+    WHERE  substring(t.email FROM '@(.*)$') != 'redhat.com'
+    GROUP BY t.customer_id
 )
 SELECT c.account_id,
        cnr.domain,
@@ -20,4 +21,4 @@ WHERE  c.account_id NOT IN ('6089719',
                             '540155',
                             '6289400',
                             '6289401')
-AND    date(p.created_timestamp) <= date(now() - INTERVAL '6 days')
+AND    date(p.created_timestamp) >= date(now() - INTERVAL '6 days')

@@ -1,10 +1,11 @@
- WITH cust_non_redhat AS
-(
-                SELECT DISTINCT t.customer_id,
-                                substring(t.email from '@(.*)$') AS domain
-                FROM            PUBLIC.api_user t
-                WHERE           substring(t.email FROM '@(.*)$') != 'redhat.com' ), filtered_customers AS
-(
+ WITH cust_non_redhat AS (
+    SELECT t.customer_id,
+           array_agg(DISTINCT substring(t.email from '@(.*)$')) AS domain
+    FROM   PUBLIC.api_user t
+    WHERE  substring(t.email FROM '@(.*)$') != 'redhat.com'
+    GROUP BY t.customer_id
+),
+filtered_customers AS (
          SELECT   c.id,
                   c.account_id,
                   cnr.domain

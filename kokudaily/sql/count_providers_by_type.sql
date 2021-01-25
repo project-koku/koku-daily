@@ -21,7 +21,7 @@ filtered_customers AS (
             cnr.domain
 )
 SELECT   p.type,
-         count(*) as count
+         count (DISTINCT p.uuid) as count
 FROM     PUBLIC.api_provider AS p
 JOIN     filtered_customers AS fc
 ON       p.customer_id = fc.id
