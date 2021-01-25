@@ -37,7 +37,7 @@ div_list = []
 div_list.append(dcc.Location(id="url", refresh=False))
 
 for key, value in CHART_PATHS.items():
-    div_list.append(dcc.Link(value.get("name", "Missing Link Name"), href=Config.APP_URL_PREFIX + key))
+    div_list.append(dcc.Link(value.get("name", "Missing Link Name"), key))
     div_list.append(html.Br())
 
 # content will be rendered in this element
@@ -50,13 +50,11 @@ app.layout = html.Div(div_list)
 )
 def display_page(pathname):
     LOG.info(f"Hitting path {pathname}.")
-    if pathname and Config.APP_URL_PREFIX in pathname:
-        pathname = re.sub(Config.APP_URL_PREFIX, "", pathname)
     view = CHART_PATHS.get(pathname, {}).get("view")
     if view:
         return view()
     else:
-        return html.Div([html.H3(f"Unknown page {Config.APP_URL_PREFIX}{pathname}")])
+        return html.Div([html.H3(f"Unknown page {pathname}")])
 
 
 app.run_server(debug=True, host=Config.APP_HOST, port=Config.APP_PORT)
