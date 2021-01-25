@@ -61,6 +61,11 @@ REPORTS = {
         "file": "sql/count_filtered_users_by_account.sql",
         "namespace": "hccm-prod",
         "target": "marketing",
+    },
+    "count_filtered_users_by_domain": {
+        "file": "sql/count_filtered_users_by_domain.sql",
+        "namespace": "hccm-prod",
+        "target": "marketing",
         "prometheus": {
             "type": "Gauge",
             "value": "count",
