@@ -9,7 +9,7 @@ WITH cte_manifest_temp AS (
     DESC NULLS LAST
 )
 SELECT    cust.account_id,
-          t.*
+          t.*,
           auth.credentials->>'cluster_id' as cluster_id
 FROM      PUBLIC.api_provider t
 LEFT JOIN PUBLIC.api_sources AS sources
