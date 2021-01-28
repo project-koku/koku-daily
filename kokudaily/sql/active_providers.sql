@@ -10,9 +10,12 @@ WITH cte_manifest_temp AS (
 )
 SELECT    cust.account_id,
           t.*
+          auth.credentials->>'cluster_id' as cluster_id
 FROM      PUBLIC.api_provider t
 LEFT JOIN PUBLIC.api_sources AS sources
 ON        t.uuid :: text = sources.koku_uuid
+JOIN      PUBLIC.api_providerauthentication AS auth
+ON        t.authentication_id  = auth.id
 JOIN      cte_manifest_temp AS status
 ON        t.uuid = status.provider_id
 JOIN      PUBLIC.api_customer AS cust
