@@ -37,7 +37,7 @@ div_list = []
 div_list.append(dcc.Location(id="url", refresh=False))
 
 for key, value in CHART_PATHS.items():
-    div_list.append(dcc.Link(value.get("name", "Missing Link Name"), key))
+    div_list.append(dcc.Link(value.get("name", "Missing Link Name"), href=key))
     div_list.append(html.Br())
 
 # content will be rendered in this element
