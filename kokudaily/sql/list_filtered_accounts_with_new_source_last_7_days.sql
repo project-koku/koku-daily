@@ -22,3 +22,4 @@ WHERE  c.account_id NOT IN ('6089719',
                             '6289400',
                             '6289401')
 AND    date(p.created_timestamp) >= date(now() - INTERVAL '6 days')
+ORDER BY p.type, p.setup_complete
