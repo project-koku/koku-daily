@@ -1,5 +1,4 @@
 import logging
-import re
 import sys
 
 import dash
@@ -15,7 +14,9 @@ root.setLevel(logging.INFO)
 
 handler = logging.StreamHandler(sys.stdout)
 handler.setLevel(logging.INFO)
-formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+formatter = logging.Formatter(
+    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 handler.setFormatter(formatter)
 root.addHandler(handler)
 
@@ -46,7 +47,8 @@ app.layout = html.Div(div_list)
 
 
 @app.callback(
-    dash.dependencies.Output("page-content", "children"), [dash.dependencies.Input("url", "pathname")],
+    dash.dependencies.Output("page-content", "children"),
+    [dash.dependencies.Input("url", "pathname")],
 )
 def display_page(pathname):
     LOG.info(f"Hitting path {pathname}.")

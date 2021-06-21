@@ -13,15 +13,29 @@ REGISTRY = CollectorRegistry()
 class Config:
     """Configuration for app."""
 
-    # Database
-    DB_ENGINE = os.getenv("DATABASE_ENGINE", "postgresql")
-    DB_NAME = os.getenv("DATABASE_NAME", "postgres")
-    DB_USER = os.getenv("DATABASE_USER", "postgres")
-    DB_PASSWORD = os.getenv("DATABASE_PASSWORD", "postgres")
-    DB_HOST = os.getenv("DATABASE_HOST", "localhost")
-    DB_PORT = os.getenv("DATABASE_PORT", "15432")
+    CLOWDER_ENABLED = os.getenv("CLOWDER_ENABLED", "false")
+    if CLOWDER_ENABLED.lower() == "true":
+        from app_common_python import LoadedConfig
 
-    SQLALCHEMY_DATABASE_URI = f"{DB_ENGINE}://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+        # Database
+        DB_ENGINE = os.getenv("DATABASE_ENGINE", "postgresql")
+        DB_NAME = LoadedConfig.database.name
+        DB_USER = LoadedConfig.database.username
+        DB_PASSWORD = LoadedConfig.database.password
+        DB_HOST = LoadedConfig.database.hostname
+        DB_PORT = LoadedConfig.database.port
+    else:
+        # Database
+        DB_ENGINE = os.getenv("DATABASE_ENGINE", "postgresql")
+        DB_NAME = os.getenv("DATABASE_NAME", "postgres")
+        DB_USER = os.getenv("DATABASE_USER", "postgres")
+        DB_PASSWORD = os.getenv("DATABASE_PASSWORD", "postgres")
+        DB_HOST = os.getenv("DATABASE_HOST", "localhost")
+        DB_PORT = os.getenv("DATABASE_PORT", "15432")
+
+    SQLALCHEMY_DATABASE_URI = (
+        f"{DB_ENGINE}://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    )
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
@@ -45,7 +59,9 @@ class Config:
     APP_PORT = os.getenv("APP_PORT", "8080")
 
     if APP_HOST != "127.0.0.1":
-        LOG.info("Listening on %s:%s. This might be insecure.", APP_HOST, APP_PORT)
+        LOG.info(
+            "Listening on %s:%s. This might be insecure.", APP_HOST, APP_PORT
+        )
 
     try:
         APP_PORT = int(APP_PORT)
