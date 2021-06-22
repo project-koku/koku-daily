@@ -1,4 +1,4 @@
-  
+
 #!/bin/bash
 
 echo "os: $OSTYPE"
@@ -22,7 +22,7 @@ source $CICD_ROOT/build.sh
 
 source $CICD_ROOT/_common_deploy_logic.sh
 export NAMESPACE=$(bonfire namespace reserve)
-oc process --local -f deploy/clowdapp.yaml | oc apply -f - -n $NAMESPACE
+oc process --local -f deploy/clowdapp.yaml -p IMAGE_TAG=${IMAGE_TAG} | oc apply -f - -n $NAMESPACE
 
 mkdir -p $WORKSPACE/artifacts
 cat << EOF > ${WORKSPACE}/artifacts/junit-dummy.xml

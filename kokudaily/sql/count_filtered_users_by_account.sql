@@ -27,5 +27,3 @@ FROM     PUBLIC.api_user t
 JOIN     filtered_customers AS fc
 ON       t.customer_id = fc.id
 GROUP BY fc.account_id, fc.domain
-
-
