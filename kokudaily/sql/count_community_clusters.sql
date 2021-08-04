@@ -1,6 +1,8 @@
 SELECT count (*) as "count",
        rm.assembly_id,
        rm.operator_certified,
+       rm.operator_version,
+       rm.cluster_id,
        c.account_id,
        p.type as source_type
   FROM public.reporting_common_costusagereportmanifest AS rm
@@ -13,5 +15,7 @@ SELECT count (*) as "count",
     BY c.account_id,
        rm.assembly_id,
        rm.operator_certified,
+       rm.operator_version,
+       rm.cluster_id,
        source_type
 ;
