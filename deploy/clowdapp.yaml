@@ -1,0 +1,125 @@
+---
+apiVersion: v1
+kind: Template
+metadata:
+  name: koku-daily
+objects:
+
+- apiVersion: v1
+  kind: Secret
+  metadata:
+    name: koku-daily-secret
+  data:
+    email_user: ''
+    email_password: ''
+  type: Opaque
+
+- apiVersion: cloud.redhat.com/v1alpha1
+  kind: ClowdApp
+  metadata:
+    name: koku-daily
+  spec:
+    envName: ${ENV_NAME}
+    database:
+      name: ${DATABASE_NAME}
+      version: ${{DATABASE_VERSION}}
+    jobs:
+    - name: koku-daily
+      schedule: ${EMAIL_SCHEDULE}
+      restartPolicy: Never
+      concurrencyPolicy: Forbid
+      startingDeadlineSeconds: ${{EMAIL_STARTING_DEADLINE}}
+      podSpec:
+        image: ${IMAGE}:${IMAGE_TAG}
+        command: ["python", "job.py"]
+        env:
+          - name: EMAIL_USER
+            valueFrom:
+              secretKeyRef:
+                key: email_user
+                name: koku-daily-secret
+                optional: true
+          - name: EMAIL_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: email_password
+                name: koku-daily-secret
+                optional: true
+          - name: EMAIL_GROUPS
+            value: '{}'
+          - name: PROMETHEUS_PUSH_GATEWAY
+            value: ${PROMETHEUS_PUSHGATEWAY}
+          - name: CLOWDER_ENABLED
+            value: ${CLOWDER_ENABLED}
+          - name: NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+
+    - name: koku-daily-prom
+      schedule: ${PROM_SCHEDULE}
+      restartPolicy: Never
+      concurrencyPolicy: Forbid
+      startingDeadlineSeconds: ${{PROM_STARTING_DEADLINE}}
+      podSpec:
+        image: ${IMAGE}:${IMAGE_TAG}
+        command: ["python", "job.py"]
+        env:
+          - name: EMAIL_USER
+            valueFrom:
+              secretKeyRef:
+                key: email_user
+                name: koku-daily-secret
+                optional: true
+          - name: EMAIL_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: email_password
+                name: koku-daily-secret
+                optional: true
+          - name: EMAIL_GROUPS
+            value: '{}'
+          - name: PROMETHEUS_PUSH_GATEWAY
+            value: ${PROMETHEUS_PUSHGATEWAY}
+          - name: CLOWDER_ENABLED
+            value: ${CLOWDER_ENABLED}
+          - name: NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+
+
+parameters:
+- description: Cpu limit of service
+  name: CPU_LIMIT
+  value: "1"
+- description: memory limit of service
+  name: MEMORY_LIMIT
+  value: 1Gi
+- description: Image tag
+  name: IMAGE_TAG
+  required: true
+- description: Image name
+  name: IMAGE
+  value: quay.io/cloudservices/koku-daily
+- description: Determines Clowder deployment
+  name: CLOWDER_ENABLED
+  value: "true"
+- description: ClowdEnv Name
+  name: ENV_NAME
+  requred: false
+- name: DATABASE_NAME
+  value: koku
+- name: DATABASE_VERSION
+  value: '12'
+- name: EMAIL_SCHEDULE
+  value: '0 15 * * *'
+- name: EMAIL_STARTING_DEADLINE
+  value: '300'
+- name: PROM_SCHEDULE
+  value: '*/30 * * * *'
+- name: PROM_STARTING_DEADLINE
+  value: '300'
+- name: PROMETHEUS_PUSHGATEWAY
+  description: Prometheus push gateway and port
+  value: 'prometheus-pushgateway:9091'
