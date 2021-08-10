@@ -202,6 +202,26 @@ REPORTS = {
         "target": "prometheus",
         "prometheus": {"type": "Gauge", "value": "count"},
     },
+    "count_airgapped_clusters": {
+        "file": "sql/count_airgapped_clusters.sql",
+        "target": "engineering",
+    },
+    "count_connected_clusters": {
+        "file": "sql/count_connected_clusters.sql",
+        "target": "engineering",
+    },
+    "count_community_clusters": {
+        "file": "sql/count_community_clusters.sql",
+        "target": "engineering",
+    },
+    "count_certified_clusters": {
+        "file": "sql/count_certified_clusters.sql",
+        "target": "engineering",
+    },
+    "count_errored_clusters": {
+        "file": "sql/count_errored_clusters.sql",
+        "target": "engineering",
+    },
 }
 
 
