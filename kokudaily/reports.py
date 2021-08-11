@@ -98,6 +98,11 @@ REPORTS = {
         "namespace": "hccm-prod",
         "target": "marketing",
     },
+    "count_internal_providers_by_type": {
+        "file": "sql/count_internal_providers_by_type.sql",
+        "namespace": "hccm-prod",
+        "target": "engineering",
+    },
     "count_providers_by_filtered_account": {
         "file": "sql/count_providers_by_filtered_account.sql",
         "namespace": "hccm-prod",
