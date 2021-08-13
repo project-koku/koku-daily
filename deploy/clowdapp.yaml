@@ -55,6 +55,13 @@ objects:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
+        resources:
+          requests:
+            cpu: ${CPU_REQUEST}
+            memory: ${MEMORY_REQUEST}
+          limits:
+            cpu: ${CPU_LIMIT}
+            memory: ${MEMORY_LIMIT}
 
     - name: koku-daily-prom
       schedule: ${PROM_SCHEDULE}
@@ -87,15 +94,28 @@ objects:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
+        resources:
+          requests:
+            cpu: ${CPU_REQUEST}
+            memory: ${MEMORY_REQUEST}
+          limits:
+            cpu: ${CPU_LIMIT}
+            memory: ${MEMORY_LIMIT}
 
 
 parameters:
+- description: Cpu limit of service
+  name: CPU_REQUEST
+  value: 500m
+- description: memory limit of service
+  name: MEMORY_REQUEST
+  value: 1Gi
 - description: Cpu limit of service
   name: CPU_LIMIT
   value: "1"
 - description: memory limit of service
   name: MEMORY_LIMIT
-  value: 1Gi
+  value: 2Gi
 - description: Image tag
   name: IMAGE_TAG
   required: true
