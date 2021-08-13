@@ -24,8 +24,7 @@ cte_active_customers AS (
     SELECT DISTINCT customer_id
     FROM PUBLIC.api_provider
 )
-SELECT count(DISTINCT t.username) as total_users,
-    count(DISTINCT t.username) FILTER (WHERE ac.customer_id IS NOT NULL) as users_with_active_customers
+SELECT count(DISTINCT t.username) FILTER (WHERE ac.customer_id IS NOT NULL) as total_users
 FROM   PUBLIC.api_user t
 JOIN   filtered_customers AS fc
 ON     t.customer_id = fc.id
