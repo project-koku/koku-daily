@@ -46,7 +46,7 @@ objects:
                 name: koku-daily-secret
                 optional: true
           - name: EMAIL_GROUPS
-            value: '{}'
+            value: ${EMAIL_GROUPS}
           - name: PROMETHEUS_PUSH_GATEWAY
             value: ${PROMETHEUS_PUSHGATEWAY}
           - name: CLOWDER_ENABLED
@@ -84,7 +84,7 @@ objects:
                 key: email_password
                 name: koku-daily-secret
                 optional: true
-          - name: EMAIL_GROUPS
+          - name: EMAIL_GROUPS  # not used by koku-daily-prom
             value: '{}'
           - name: PROMETHEUS_PUSH_GATEWAY
             value: ${PROMETHEUS_PUSHGATEWAY}
@@ -132,6 +132,8 @@ parameters:
   value: koku
 - name: DATABASE_VERSION
   value: '12'
+- name: EMAIL_GROUPS
+  value: '{}'
 - name: EMAIL_SCHEDULE
   value: '0 15 * * *'
 - name: EMAIL_STARTING_DEADLINE
