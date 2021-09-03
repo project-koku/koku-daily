@@ -21,8 +21,9 @@ objects:
   spec:
     envName: ${ENV_NAME}
     database:
-      name: ${DATABASE_NAME}
-      version: ${{DATABASE_VERSION}}
+      sharedDbAppName: koku
+    dependencies:
+      - koku
     jobs:
     - name: koku-daily
       schedule: ${EMAIL_SCHEDULE}
@@ -128,10 +129,6 @@ parameters:
 - description: ClowdEnv Name
   name: ENV_NAME
   requred: false
-- name: DATABASE_NAME
-  value: koku
-- name: DATABASE_VERSION
-  value: '12'
 - name: EMAIL_GROUPS
   value: '{}'
 - name: EMAIL_SCHEDULE
