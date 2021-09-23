@@ -12,6 +12,12 @@ objects:
   data:
     email_user: ''
     email_password: ''
+    redshift_host: ''
+    redshift_port: ''
+    redshift_db: ''
+    redshift_user: ''
+    redshift_password: ''
+    redshift_table_prefix: ''
   type: Opaque
 
 - apiVersion: cloud.redhat.com/v1alpha1
@@ -103,6 +109,67 @@ objects:
             cpu: ${CPU_LIMIT}
             memory: ${MEMORY_LIMIT}
 
+    - name: koku-daily-redshift
+      schedule: ${PROM_SCHEDULE}
+      restartPolicy: Never
+      concurrencyPolicy: Forbid
+      startingDeadlineSeconds: ${{PROM_STARTING_DEADLINE}}
+      podSpec:
+        image: ${IMAGE}:${IMAGE_TAG}
+        command: ["python", "job.py"]
+        env:
+          - name: REDSHIFT_HOST
+            valueFrom:
+              secretKeyRef:
+                key: redshift_host
+                name: koku-daily-secret
+                optional: true
+          - name: REDSHIFT_PORT
+            valueFrom:
+              secretKeyRef:
+                key: redshift_port
+                name: koku-daily-secret
+                optional: true
+          - name: REDSHIFT_DB
+            valueFrom:
+              secretKeyRef:
+                key: redshift_db
+                name: koku-daily-secret
+                optional: true
+          - name: REDSHIFT_USER
+            valueFrom:
+              secretKeyRef:
+                key: redshift_user
+                name: koku-daily-secret
+                optional: true
+          - name: REDSHIFT_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: redshift_password
+                name: koku-daily-secret
+                optional: true
+          - name: REDSHIFT_TABLE_PREFIX
+            valueFrom:
+              secretKeyRef:
+                key: redshift_table_prefix
+                name: koku-daily-secret
+                optional: true
+          - name: EMAIL_GROUPS  # not used by koku-daily-prom
+            value: '{}'
+          - name: CLOWDER_ENABLED
+            value: ${CLOWDER_ENABLED}
+          - name: NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+        resources:
+          requests:
+            cpu: ${CPU_REQUEST}
+            memory: ${MEMORY_REQUEST}
+          limits:
+            cpu: ${CPU_LIMIT}
+            memory: ${MEMORY_LIMIT}
+
 
 parameters:
 - description: Cpu limit of service
@@ -142,3 +209,7 @@ parameters:
 - name: PROMETHEUS_PUSHGATEWAY
   description: Prometheus push gateway and port
   value: 'prometheus-pushgateway:9091'
+- name: REDSHIFT_SCHEDULE
+  value: '0 15 * * *'
+- name: REDSHIFT_STARTING_DEADLINE
+  value: '300'

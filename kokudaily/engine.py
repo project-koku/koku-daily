@@ -6,7 +6,7 @@ from kokudaily.config import Config
 
 CLOWDER_ENABLED = os.getenv("CLOWDER_ENABLED", "false")
 if CLOWDER_ENABLED.lower() == "true":
-    from app_common_python import LoadedConfig, SmartAppConfig
+    from app_common_python import LoadedConfig, SmartAppConfig  # noqa
 
 
 def _create_engine_kwargs():
@@ -37,7 +37,7 @@ def _create_engine_kwargs():
     return kwargs, cert_file
 
 
-def create_engine():
+def create_engine(uri=Config.SQLALCHEMY_DATABASE_URI, add_kwargs=True):
     """Create a database engine to manage DB connections.
 
     Args:
@@ -46,8 +46,15 @@ def create_engine():
         (sqlalchemy.engine.base.Engine): "SQLAlchemy engine object",
         (sqlalchemy.sql.schema.MetaData): "SQLAlchemy engine metadata"
     """
-    kwargs, _ = _create_engine_kwargs()
-    return sqlalchemy.create_engine(Config.SQLALCHEMY_DATABASE_URI, **kwargs)
+    kwargs = {}
+    if add_kwargs:
+        kwargs, _ = _create_engine_kwargs()
+    return sqlalchemy.create_engine(uri, **kwargs)
 
 
 DB_ENGINE = create_engine()
+REDSHIFT_ENGINE = None
+if Config.REDSHIFT_DATABASE_URI:
+    REDSHIFT_ENGINE = create_engine(
+        uri=Config.REDSHIFT_DATABASE_URI, add_kwargs=False
+    )

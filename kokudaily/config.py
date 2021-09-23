@@ -70,3 +70,15 @@ class Config:
         APP_PORT = 8080
 
     APP_URL_PREFIX = os.getenv("APP_URL_PREFIX", "")
+
+    # Redshift configuration
+    REDSHIFT_HOST = os.getenv("REDSHIFT_HOST")
+    REDSHIFT_PORT = os.getenv("REDSHIFT_PORT")
+    REDSHIFT_DB = os.getenv("REDSHIFT_DB")
+    REDSHIFT_TABLE_PREFIX = os.getenv("REDSHIFT_TABLE_PREFIX", "koku")
+    REDSHIFT_USER = os.getenv("REDSHIFT_USER")
+    REDSHIFT_PASSWORD = os.getenv("REDSHIFT_PASSWORD")
+    REDSHIFT_DATABASE_URI = None
+
+    if REDSHIFT_HOST:
+        REDSHIFT_DATABASE_URI = f"{DB_ENGINE}://{REDSHIFT_USER}:{REDSHIFT_PASSWORD}@{REDSHIFT_HOST}:{REDSHIFT_PORT}/{REDSHIFT_DB}"  # noqa

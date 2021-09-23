@@ -1,4 +1,9 @@
 version: "3"
+
+volumes:
+  postgres_data:
+      driver: local
+
 services:
 
   pushgateway:
@@ -13,7 +18,6 @@ services:
       - 9090:9090
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./prometheus/alerts/:/etc/prometheus/rules.d/
 
   grafana:
     image: grafana/grafana:4.6.2
@@ -21,3 +25,14 @@ services:
       - 3000:3000
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=password
+
+  redshift:
+      image: postgres
+      volumes:
+        - postgres_data:/var/lib/postgresql/data
+      environment:
+        POSTGRES_DB: rhdsrs
+        POSTGRES_USER: postgres
+        POSTGRES_PASSWORD: postgres
+      ports:
+        - 5439:5432
