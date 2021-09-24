@@ -6,7 +6,7 @@ from kokudaily.config import Config
 
 CLOWDER_ENABLED = os.getenv("CLOWDER_ENABLED", "false")
 if CLOWDER_ENABLED.lower() == "true":
-    from app_common_python import LoadedConfig, SmartAppConfig
+    from app_common_python import LoadedConfig, SmartAppConfig  # noqa
 
 
 def _create_engine_kwargs():
