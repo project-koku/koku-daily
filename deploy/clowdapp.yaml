@@ -103,6 +103,34 @@ objects:
             cpu: ${CPU_LIMIT}
             memory: ${MEMORY_LIMIT}
 
+    - name: koku-daily-s3
+      schedule: ${S3_SCHEDULE}
+      restartPolicy: Never
+      concurrencyPolicy: Forbid
+      startingDeadlineSeconds: ${{S3_STARTING_DEADLINE}}
+      podSpec:
+        image: ${IMAGE}:${IMAGE_TAG}
+        command: ["python", "job.py"]
+        env:
+          - name: EMAIL_GROUPS  # not used by koku-daily-s3
+            value: '{}'
+          - name: WAREHOUSE_PATH
+            value: ${WAREHOUSE_PATH}
+          - name: CLOWDER_ENABLED
+            value: ${CLOWDER_ENABLED}
+          - name: NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+        resources:
+          requests:
+            cpu: ${CPU_REQUEST}
+            memory: ${MEMORY_REQUEST}
+          limits:
+            cpu: ${CPU_LIMIT}
+            memory: ${MEMORY_LIMIT}
+      objectStore:
+      - ${S3_BUCKET_NAME}
 
 parameters:
 - description: Cpu limit of service
@@ -142,3 +170,11 @@ parameters:
 - name: PROMETHEUS_PUSHGATEWAY
   description: Prometheus push gateway and port
   value: 'prometheus-pushgateway:9091'
+- name: WAREHOUSE_PATH
+  value: 'metrics'
+- name: S3_BUCKET_NAME
+  value: koku-eph-s3
+- name: S3_SCHEDULE
+  value: '0 15 * * *'
+- name: S3_STARTING_DEADLINE
+  value: '300'

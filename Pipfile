@@ -12,6 +12,8 @@ prometheus-client = "*"
 python-dateutil = ">=2.8"
 pytz = "*"
 app-common-python = "*"
+minio = "*"
+pyarrow = "*"
 
 [dev-packages]
 

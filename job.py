@@ -6,6 +6,7 @@ from kokudaily.config import REGISTRY
 from kokudaily.reports import run_reports
 from kokudaily.send import email
 from kokudaily.send import prometheus
+from kokudaily.send import s3
 from prometheus_client import push_to_gateway
 
 root = logging.getLogger()
@@ -33,6 +34,7 @@ for target, report_dict in report_data.items():
         if path:
             report_files.append(path)
         prometheus(target, report_name, **report)
+        s3(target, report_name, **report)
     email(recipients, attachments=report_files, target=target)
     if Config.PROMETHEUS_PUSH_GATEWAY:
         push_to_gateway(

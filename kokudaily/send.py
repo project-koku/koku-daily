@@ -1,14 +1,20 @@
 import logging
+import os
 import smtplib
+from datetime import date
 from email.encoders import encode_base64
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from tempfile import gettempdir
 
+import pyarrow.parquet as pq
 from kokudaily.config import Config
 from kokudaily.config import REGISTRY
 from kokudaily.reports import REPORTS
+from minio import Minio
 from prometheus_client import Gauge
+from pyarrow import csv
 
 LOG = logging.getLogger(__name__)
 
@@ -89,3 +95,46 @@ def prometheus(target, report_name, **report):
             LOG.warning(f"No captured metric data found for {metric_name}.")
     else:
         LOG.info(f"No metric recorded for {metric_name} of target {target}.")
+
+
+def get_minio_client():
+    """Create client for handling object store interaction."""
+    minio_client = Minio(
+        Config.MINIO_ENDPOINT,
+        access_key=Config.MINIO_ACCESS_KEY,
+        secret_key=Config.MINIO_SECRET_KEY,
+        secure=Config.MINIO_SECURE,
+    )
+    return minio_client
+
+
+def s3(target, report_name, **report):
+    if not Config.MINIO_ACCESS_KEY:
+        return
+
+    minio_client = get_minio_client()
+    bucket_exists = minio_client.bucket_exists(bucket_name=Config.MINIO_BUCKET)
+    if not bucket_exists:
+        LOG.info(
+            f"{Config.MINIO_BUCKET} doesn't exits, so data cannot be uploaded."
+        )
+
+    table = csv.read_csv(report.get("file"))
+
+    tmp = gettempdir()
+    temp_dir = os.path.join(tmp, "parquet_reports")
+    os.makedirs(temp_dir, exist_ok=True)
+    tempfile = os.path.join(temp_dir, f"{report_name}.parquet")
+    pq.write_table(table, tempfile)
+
+    todays_date = date.today()
+    metric_file_name = f"{Config.WAREHOUSE_PATH}/metric={report_name}/year={todays_date.year}/month={todays_date.month}/day={todays_date.day}/{report_name}.parquet"  # noqa
+
+    LOG.info(
+        f"Uploading metric file {metric_file_name} to {Config.MINIO_BUCKET}."
+    )
+    minio_client.fput_object(
+        bucket_name=Config.MINIO_BUCKET,
+        object_name=metric_file_name,
+        file_path=tempfile,
+    )

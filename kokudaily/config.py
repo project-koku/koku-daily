@@ -24,6 +24,22 @@ class Config:
         DB_PASSWORD = LoadedConfig.database.password
         DB_HOST = LoadedConfig.database.hostname
         DB_PORT = LoadedConfig.database.port
+
+        MINIO_ENDPOINT = LoadedConfig.objectStore.hostname
+        MINIO_ENDPOINT_PORT = LoadedConfig.objectStore.port
+        MINIO_SECURE = bool(LoadedConfig.objectStore.tls)
+
+        if LoadedConfig.objectStore.accessKey:
+            MINIO_ACCESS_KEY = LoadedConfig.objectStore.accessKey
+        else:
+            MINIO_ACCESS_KEY = LoadedConfig.objectStore.buckets[0].accessKey
+
+        if LoadedConfig.objectStore.secretKey:
+            MINIO_SECRET_KEY = LoadedConfig.objectStore.secretKey
+        else:
+            MINIO_SECRET_KEY = LoadedConfig.objectStore.buckets[0].secretKey
+
+        MINIO_BUCKET = LoadedConfig.objectStore.buckets[0].name
     else:
         # Database
         DB_ENGINE = os.getenv("DATABASE_ENGINE", "postgresql")
@@ -32,6 +48,12 @@ class Config:
         DB_PASSWORD = os.getenv("DATABASE_PASSWORD", "postgres")
         DB_HOST = os.getenv("DATABASE_HOST", "localhost")
         DB_PORT = os.getenv("DATABASE_PORT", "15432")
+        MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", None)
+        MINIO_ENDPOINT_PORT = os.getenv("MINIO_ENDPOINT_PORT", 443)
+        MINIO_SECURE = bool(os.getenv("MINIO_SECURE", True))
+        MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", None)
+        MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", None)
+        MINIO_BUCKET = os.getenv("MINIO_BUCKET", None)
 
     SQLALCHEMY_DATABASE_URI = (
         f"{DB_ENGINE}://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
@@ -70,3 +92,6 @@ class Config:
         APP_PORT = 8080
 
     APP_URL_PREFIX = os.getenv("APP_URL_PREFIX", "")
+
+    # S3 configuration
+    WAREHOUSE_PATH = os.getenv("WAREHOUSE_PATH", "metrics")
