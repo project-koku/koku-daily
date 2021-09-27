@@ -22,6 +22,8 @@ objects:
     envName: ${ENV_NAME}
     database:
       sharedDbAppName: koku
+    objectStore:
+      - ${S3_BUCKET_NAME}
     dependencies:
       - koku
     jobs:
@@ -129,8 +131,6 @@ objects:
           limits:
             cpu: ${CPU_LIMIT}
             memory: ${MEMORY_LIMIT}
-      objectStore:
-      - ${S3_BUCKET_NAME}
 
 parameters:
 - description: Cpu limit of service
@@ -175,6 +175,6 @@ parameters:
 - name: S3_BUCKET_NAME
   value: koku-eph-s3
 - name: S3_SCHEDULE
-  value: '0 15 * * *'
+  value: '0 18 * * *'
 - name: S3_STARTING_DEADLINE
   value: '300'
