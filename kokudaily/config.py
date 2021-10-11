@@ -95,3 +95,19 @@ class Config:
 
     # S3 configuration
     WAREHOUSE_PATH = os.getenv("WAREHOUSE_PATH", "metrics")
+
+    WEEKLY_REPORT_SCHEDULED_DAY = os.getenv("WEEKLY_REPORT_SCHEDULED_DAY")
+    if WEEKLY_REPORT_SCHEDULED_DAY:
+        try:
+            WEEKLY_REPORT_SCHEDULED_DAY = int(WEEKLY_REPORT_SCHEDULED_DAY)
+        except ValueError:
+            LOG.error(
+                "Invalid WEEKLY_REPORT_SCHEDULED_DAY input."
+                " Must be integer 0-6."
+            )
+            WEEKLY_REPORT_SCHEDULED_DAY = None
+    RUN_DAILY_REPORTS = os.getenv("RUN_DAILY_REPORTS", "")
+    if RUN_DAILY_REPORTS.lower() == "true":
+        RUN_DAILY_REPORTS = True
+    else:
+        RUN_DAILY_REPORTS = False
