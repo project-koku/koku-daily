@@ -189,6 +189,6 @@ parameters:
 - name: S3_STARTING_DEADLINE
   value: '300'
 - name: WEEKLY_REPORT_SCHEDULED_DAY
-  value: 6
+  value: "6"
 - name: RUN_DAILY_REPORTS
   value: True
