@@ -54,6 +54,10 @@ objects:
             value: ${PROMETHEUS_PUSHGATEWAY}
           - name: CLOWDER_ENABLED
             value: ${CLOWDER_ENABLED}
+          - name: WEEKLY_REPORT_SCHEDULED_DAY
+            value: ${WEEKLY_REPORT_SCHEDULED_DAY}
+          - name: RUN_DAILY_REPORTS
+            value: ${RUN_DAILY_REPORTS}
           - name: NAMESPACE
             valueFrom:
               fieldRef:
@@ -93,6 +97,8 @@ objects:
             value: ${PROMETHEUS_PUSHGATEWAY}
           - name: CLOWDER_ENABLED
             value: ${CLOWDER_ENABLED}
+          - name: RUN_DAILY_REPORTS
+            value: "false"
           - name: NAMESPACE
             valueFrom:
               fieldRef:
@@ -120,6 +126,10 @@ objects:
             value: ${WAREHOUSE_PATH}
           - name: CLOWDER_ENABLED
             value: ${CLOWDER_ENABLED}
+          - name: WEEKLY_REPORT_SCHEDULED_DAY
+            value: ${WEEKLY_REPORT_SCHEDULED_DAY}
+          - name: RUN_DAILY_REPORTS
+            value: ${RUN_DAILY_REPORTS}
           - name: NAMESPACE
             valueFrom:
               fieldRef:
@@ -178,3 +188,7 @@ parameters:
   value: '0 18 * * *'
 - name: S3_STARTING_DEADLINE
   value: '300'
+- name: WEEKLY_REPORT_SCHEDULED_DAY
+  value: "6"
+- name: RUN_DAILY_REPORTS
+  value: "true"

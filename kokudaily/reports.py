@@ -16,6 +16,7 @@ REQUIRES = [
         "setup": [
             {
                 "file": "sql/cust_size_report_setup.sql",
+                "frequency": "weekly",
                 "status": "",
                 "sql_parameters": {
                     "start_time": datetime.datetime.now().replace(
@@ -38,19 +39,36 @@ REQUIRES = [
                     + relativedelta(months=1),
                     "provider_types": ["OCP"],  # MUST be a list!
                 },
-            }
+            },
+            {
+                "file": "sql/cust_tag_report_setup.sql",
+                "status": "",
+                "frequency": "daily",
+                "sql_parameters": {},
+            },
         ],
         "teardown": [
-            {"file": "sql/cust_size_report_teardown.sql", "status": ""}
+            {"file": "sql/cust_size_report_teardown.sql", "status": ""},
+            {"file": "sql/cust_tag_report_teardown.sql", "status": ""},
         ],
     }
 ]
 
+WEEKLY_REPORTS = {
+    "cust_size_report": {
+        "file": "sql/cust_size_report.sql",
+        "target": "engineering",
+    }
+}
+
+DAILY_REPORTS = {
+    "cust_tag_report": {
+        "file": "sql/cust_tag_report.sql",
+        "target": "engineering",
+    }
+}
+
 REPORTS = {
-    # "cust_size_report": {
-    #     "file": "sql/cust_size_report.sql",
-    #     "target": "engineering",
-    # },
     "count_filtered_users": {
         "file": "sql/count_filtered_users.sql",
         "namespace": "hccm-prod",
@@ -247,24 +265,40 @@ def _read_sql(filename):
 
 def run_reports(filter_target=None):
     """Run the reports."""
+    today = datetime.datetime.utcnow()
+    run_weeklys = Config.WEEKLY_REPORT_SCHEDULED_DAY == today.weekday()
+    if run_weeklys:
+        REPORTS.update(WEEKLY_REPORTS)
+    if Config.RUN_DAILY_REPORTS:
+        REPORTS.update(DAILY_REPORTS)
     db = DB_ENGINE
     report_data = {}
     tmp = gettempdir()
     temp_dir = os.path.join(tmp, "reports")
     os.makedirs(temp_dir, exist_ok=True)
     with db.connect() as con:
+
         # Do any setup needed
-        # LOG.info("Running setup...")
-        # for require in REQUIRES:
-        #     for task in require["setup"]:
-        #         if task["status"] != "complete":
-        #             task_file = task["file"]
-        #             task_parameters = task.get("sql_parameters")
-        #             if task_file:
-        #                 LOG.info(f"    Executing setup task {task_file}...")
-        #                 task_sql = _read_sql(task_file)
-        #                 con.execute(task_sql, task_parameters)
-        #             task["status"] = "complete"
+        LOG.info("Running setup...")
+        for require in REQUIRES:
+            for task in require["setup"]:
+                if task["frequency"] == "weekly" and not run_weeklys:
+                    # We only run this task once a week, skip setup.
+                    continue
+                if (
+                    task["frequency"] == "daily"
+                    and not Config.RUN_DAILY_REPORTS
+                ):
+                    # We only run this task once a day, skip setup.
+                    continue
+                if task["status"] != "complete":
+                    task_file = task["file"]
+                    task_parameters = task.get("sql_parameters")
+                    if task_file:
+                        LOG.info(f"    Executing setup task {task_file}...")
+                        task_sql = _read_sql(task_file)
+                        con.execute(task_sql, task_parameters)
+                    task["status"] = "complete"
 
         for report_name, report_sql_obj in REPORTS.items():
             namespace = report_sql_obj.get("namespace", Config.NAMESPACE)
@@ -297,14 +331,14 @@ def run_reports(filter_target=None):
                 report_data[target] = target_obj
 
         # tear down any setups
-        # LOG.info("Running teardown...")
-        # for require in REQUIRES:
-        #     for task in require["teardown"]:
-        #         task_file = task["file"]
-        #         if task_file:
-        #             LOG.info(f"    Executing teardown task {task_file}...")
-        #             task_sql = _read_sql(task_file)
-        #             con.execute(task_sql)
-        #         task["status"] = "complete"
+        LOG.info("Running teardown...")
+        for require in REQUIRES:
+            for task in require["teardown"]:
+                task_file = task["file"]
+                if task_file:
+                    LOG.info(f"    Executing teardown task {task_file}...")
+                    task_sql = _read_sql(task_file)
+                    con.execute(task_sql)
+                task["status"] = "complete"
 
     return report_data
