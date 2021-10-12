@@ -98,7 +98,7 @@ objects:
           - name: CLOWDER_ENABLED
             value: ${CLOWDER_ENABLED}
           - name: RUN_DAILY_REPORTS
-            value: False
+            value: false
           - name: NAMESPACE
             valueFrom:
               fieldRef:
@@ -191,4 +191,4 @@ parameters:
 - name: WEEKLY_REPORT_SCHEDULED_DAY
   value: "6"
 - name: RUN_DAILY_REPORTS
-  value: True
+  value: true
