@@ -11,8 +11,8 @@ ENV PYTHON_VERSION=3.8 \
     PIP_NO_CACHE_DIR=1 \
     PIPENV_VENV_IN_PROJECT=1 \
     PIPENV_VERBOSITY=-1 \
-    APP_ROOT=/opt/koku-daily \
-    APP_HOME=/opt/koku-daily/koku-daily \
+    APP_ROOT=/opt/kokudaily \
+    APP_HOME=/opt/kokudaily/kokudaily \
     PLATFORM="el8"
 
 ENV SUMMARY="Koku-daily is a metrics collector for the Cost Management application" \
