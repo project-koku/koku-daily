@@ -33,7 +33,7 @@ pipenv install --dev
 ```
 pipenv shell
 ```
-1. Install the pre-commit hooks for the repository :
+5. Install the pre-commit hooks for the repository :
 ```
 pre-commit install
 ```
