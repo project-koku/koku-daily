@@ -31,9 +31,9 @@ pipenv install --dev
 ```
 4. To activate the virtual environment run :
 ```
-    pipenv shell
+pipenv shell
 ```
-5. Install the pre-commit hooks for the repository :
+1. Install the pre-commit hooks for the repository :
 ```
 pre-commit install
 ```
