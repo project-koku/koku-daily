@@ -70,47 +70,6 @@ objects:
             cpu: ${CPU_LIMIT}
             memory: ${MEMORY_LIMIT}
 
-    - name: koku-daily-prom
-      schedule: ${PROM_SCHEDULE}
-      restartPolicy: Never
-      concurrencyPolicy: Forbid
-      startingDeadlineSeconds: ${{PROM_STARTING_DEADLINE}}
-      podSpec:
-        image: ${IMAGE}:${IMAGE_TAG}
-        command: ["python", "job.py"]
-        env:
-          - name: EMAIL_USER
-            valueFrom:
-              secretKeyRef:
-                key: email_user
-                name: koku-daily-secret
-                optional: true
-          - name: EMAIL_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                key: email_password
-                name: koku-daily-secret
-                optional: true
-          - name: EMAIL_GROUPS  # not used by koku-daily-prom
-            value: '{}'
-          - name: PROMETHEUS_PUSH_GATEWAY
-            value: ${PROMETHEUS_PUSHGATEWAY}
-          - name: CLOWDER_ENABLED
-            value: ${CLOWDER_ENABLED}
-          - name: RUN_DAILY_REPORTS
-            value: "false"
-          - name: NAMESPACE
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.namespace
-        resources:
-          requests:
-            cpu: ${CPU_REQUEST}
-            memory: ${MEMORY_REQUEST}
-          limits:
-            cpu: ${CPU_LIMIT}
-            memory: ${MEMORY_LIMIT}
-
     - name: koku-daily-s3
       schedule: ${S3_SCHEDULE}
       restartPolicy: Never
