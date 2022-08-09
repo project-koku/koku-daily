@@ -3,7 +3,7 @@ SELECT count (*) as "count",
        rm.operator_airgapped,
        rm.operator_version,
        rm.cluster_id,
-       COALESCE(c.account_id, 'unkown') as account_id,
+       COALESCE(c.account_id, 'unknown') as account_id,
        c.org_id,
        p.type as source_type
   FROM

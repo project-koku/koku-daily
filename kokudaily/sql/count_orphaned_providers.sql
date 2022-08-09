@@ -1,5 +1,5 @@
 SELECT count (DISTINCT t.*),
-       COALESCE(cust.account_id, 'unkown') as account_id,
+       COALESCE(cust.account_id, 'unknown') as account_id,
        cust.org_id,
        t.type as source_type
 FROM   public.api_provider t

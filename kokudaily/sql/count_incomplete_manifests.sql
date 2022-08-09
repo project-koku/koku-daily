@@ -1,5 +1,5 @@
 SELECT    count (DISTINCT rm.*),
-          COALESCE(c.account_id, 'unkown') as account_id,
+          COALESCE(c.account_id, 'unknown') as account_id,
           c.org_id,
           p.type as source_type
 FROM      public.reporting_common_costusagereportmanifest AS rm

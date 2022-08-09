@@ -7,7 +7,7 @@ WITH cust_non_redhat AS (
 ),
 filtered_customers AS (
          SELECT   c.id,
-                  COALESCE(c.account_id, 'unkown') as account_id,
+                  COALESCE(c.account_id, 'unknown') as account_id,
                   c.org_id,
                   cnr.domain
          FROM     PUBLIC.api_customer c

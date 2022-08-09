@@ -10,7 +10,7 @@ WITH cte_manifest_temp AS (
 )
 SELECT    DISTINCT ON(status.provider_id)
           count (DISTINCT t.*),
-          COALESCE(cust.account_id, 'unkown') as account_id,
+          COALESCE(cust.account_id, 'unknown') as account_id,
           cust.org_id,
           t.type as source_type
 FROM      PUBLIC.api_provider t
