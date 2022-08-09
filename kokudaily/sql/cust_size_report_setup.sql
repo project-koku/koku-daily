@@ -92,6 +92,7 @@ begin
             on p.customer_id = c.id
             and p."type" = any( %(provider_types)s )
           where t.schema_name ~ '^acct'
+            or t.schema_name ~ '^org'
           order
             by t.schema_name
     loop

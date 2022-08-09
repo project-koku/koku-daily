@@ -10,7 +10,7 @@ WITH cte_manifest_temp AS (
     DESC NULLS LAST
 )
 SELECT    count (DISTINCT t.*),
-          cust.account_id,
+          cust.org_id,
           t.type as source_type
 FROM      PUBLIC.api_provider t
 LEFT JOIN PUBLIC.api_sources AS sources
@@ -22,5 +22,5 @@ ON        t.customer_id = cust.id
 WHERE     status.manifest_completed_datetime <= now() - interval '48 HOURS'
 AND       status.manifest_updated_datetime <= now() - interval '48 HOURS'
 AND       sources.koku_uuid IS NOT NULL
-GROUP BY cust.account_id, t.type, status.provider_id
+GROUP BY cust.org_id, t.type, status.provider_id
 ;

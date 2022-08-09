@@ -6,7 +6,7 @@
 ),
 filtered_customers AS (
     SELECT   c.id,
-             c.account_id,
+             c.org_id,
              cnr.domain
     FROM     PUBLIC.api_customer c
     JOIN     cust_redhat AS cnr

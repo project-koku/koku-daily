@@ -1,4 +1,4 @@
-SELECT cust.account_id,
+SELECT cust.org_id,
        t.*
 FROM   public.api_provider t
        left join public.api_sources AS sources
@@ -7,4 +7,4 @@ FROM   public.api_provider t
          ON t.customer_id = cust.id
 WHERE  sources.koku_uuid IS NULL
 GROUP  BY t.uuid,
-          cust.account_id
+          cust.org_id

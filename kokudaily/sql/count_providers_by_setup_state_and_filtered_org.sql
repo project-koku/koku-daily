@@ -7,21 +7,21 @@
 ),
 filtered_customers AS (
          SELECT   c.id,
-                  c.account_id,
+                  c.org_id,
                   cnr.domain
          FROM     PUBLIC.api_customer c
          JOIN     cust_non_redhat AS cnr
          ON       cnr.customer_id = c.id
-         WHERE    c.account_id NOT IN ('6089719',
-                                       '1460290',
-                                       '5910538',
-                                       '540155',
-                                       '6289400',
-                                       '6289401')
+         WHERE    c.org_id NOT IN ('11789772',
+                                   '6340056',
+                                   '11009103',
+                                   '1979710',
+                                   '12667745',
+                                   '12667749')
          GROUP BY c.id,
                   cnr.domain )
 SELECT   count (DISTINCT t.uuid),
-         fc.account_id,
+         fc.org_id,
          fc.domain,
          t.type,
          t.setup_complete,
@@ -32,7 +32,7 @@ SELECT   count (DISTINCT t.uuid),
 FROM     PUBLIC.api_provider t
 JOIN     filtered_customers AS fc
 ON       t.customer_id = fc.id
-GROUP BY fc.account_id,
+GROUP BY fc.org_id,
          fc.domain,
          t.type,
          t.setup_complete

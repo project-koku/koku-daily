@@ -6,7 +6,7 @@
 ),
 filtered_customers AS (
     SELECT   c.id,
-             c.account_id,
+             c.org_id,
              cnr.domain
     FROM     PUBLIC.api_customer c
     JOIN     cust_redhat AS cnr
@@ -17,9 +17,9 @@ filtered_customers AS (
 SELECT   p.type,
          p.setup_complete,
          count (DISTINCT p.uuid) as count,
-         fc.account_id
+         fc.org_id
 FROM     PUBLIC.api_provider AS p
 JOIN     filtered_customers AS fc
 ON       p.customer_id = fc.id
-GROUP BY p.type, p.setup_complete, fc.account_id
-ORDER BY p.type, p.setup_complete, fc.account_id
+GROUP BY p.type, p.setup_complete, fc.org_id
+ORDER BY p.type, p.setup_complete, fc.org_id

@@ -75,8 +75,8 @@ REPORTS = {
         "target": "marketing",
         "prometheus": {"type": "Gauge", "value": "count"},
     },
-    "count_filtered_users_by_account": {
-        "file": "sql/count_filtered_users_by_account.sql",
+    "count_filtered_users_by_org": {
+        "file": "sql/count_filtered_users_by_org.sql",
         "namespace": "hccm-prod",
         "target": "marketing",
     },
@@ -90,8 +90,8 @@ REPORTS = {
             "labels": ["domain"],
         },
     },
-    "count_filtered_accounts": {
-        "file": "sql/count_filtered_accounts.sql",
+    "count_filtered_orgs": {
+        "file": "sql/count_filtered_orgs.sql",
         "namespace": "hccm-prod",
         "target": "marketing",
         "prometheus": {"type": "Gauge", "value": "count"},
@@ -101,13 +101,13 @@ REPORTS = {
         "namespace": "hccm-prod",
         "target": "marketing",
     },
-    "list_filtered_accounts": {
-        "file": "sql/list_filtered_accounts.sql",
+    "list_filtered_orgs": {
+        "file": "sql/list_filtered_orgs.sql",
         "namespace": "hccm-prod",
         "target": "marketing",
     },
-    "list_filtered_accounts_with_new_source_last_7_days": {
-        "file": "sql/list_filtered_accounts_with_new_source_last_7_days.sql",
+    "list_filtered_orgs_with_new_source_last_7_days": {
+        "file": "sql/list_filtered_orgs_with_new_source_last_7_days.sql",
         "namespace": "hccm-prod",
         "target": "marketing",
     },
@@ -121,19 +121,19 @@ REPORTS = {
         "namespace": "hccm-prod",
         "target": "engineering",
     },
-    "count_internal_providers_by_account": {
-        "file": "sql/count_internal_providers_by_account.sql",
+    "count_internal_providers_by_org": {
+        "file": "sql/count_internal_providers_by_org.sql",
         "namespace": "hccm-prod",
         "target": "engineering",
     },
-    "count_providers_by_filtered_account": {
-        "file": "sql/count_providers_by_filtered_account.sql",
+    "count_providers_by_filtered_org": {
+        "file": "sql/count_providers_by_filtered_org.sql",
         "namespace": "hccm-prod",
         "target": "marketing",
         "prometheus": {
             "type": "Gauge",
             "value": "count",
-            "labels": ["domain", "account_id"],
+            "labels": ["domain", "org_id"],
         },
     },
     "count_providers_by_setup_state": {
@@ -146,14 +146,14 @@ REPORTS = {
             "labels": ["setup_complete"],
         },
     },
-    "count_providers_by_setup_state_and_filtered_account": {
-        "file": "sql/count_providers_by_setup_state_and_filtered_account.sql",
+    "count_providers_by_setup_state_and_filtered_org": {
+        "file": "sql/count_providers_by_setup_state_and_filtered_org.sql",
         "namespace": "hccm-prod",
         "target": "marketing",
         "prometheus": {
             "type": "Gauge",
             "value": "count",
-            "labels": ["domain", "account_id", "type", "setup_complete"],
+            "labels": ["domain", "org_id", "type", "setup_complete"],
         },
     },
     "invalid_sources": {
@@ -166,7 +166,7 @@ REPORTS = {
         "prometheus": {
             "type": "Gauge",
             "value": "count",
-            "labels": ["account_id", "source_type"],
+            "labels": ["org_id", "source_type"],
         },
     },
     "orphaned_providers": {
@@ -179,7 +179,7 @@ REPORTS = {
         "prometheus": {
             "type": "Gauge",
             "value": "count",
-            "labels": ["account_id", "source_type"],
+            "labels": ["org_id", "source_type"],
         },
     },
     "stale_providers": {
@@ -192,7 +192,7 @@ REPORTS = {
         "prometheus": {
             "type": "Gauge",
             "value": "count",
-            "labels": ["account_id", "source_type"],
+            "labels": ["org_id", "source_type"],
         },
     },
     "active_providers": {
@@ -205,7 +205,7 @@ REPORTS = {
         "prometheus": {
             "type": "Gauge",
             "value": "count",
-            "labels": ["account_id", "source_type"],
+            "labels": ["org_id", "source_type"],
         },
     },
     "incomplete_manifests": {
@@ -218,7 +218,7 @@ REPORTS = {
         "prometheus": {
             "type": "Gauge",
             "value": "count",
-            "labels": ["account_id", "source_type"],
+            "labels": ["org_id", "source_type"],
         },
     },
     "empty_tenants": {

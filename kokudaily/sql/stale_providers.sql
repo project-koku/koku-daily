@@ -8,7 +8,7 @@ WITH cte_manifest_temp AS (
              id
     DESC NULLS LAST
 )
-SELECT    cust.account_id,
+SELECT    cust.org_id,
           t.*
 FROM      PUBLIC.api_provider t
 LEFT JOIN PUBLIC.api_sources AS sources
