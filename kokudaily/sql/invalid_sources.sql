@@ -1,4 +1,5 @@
-SELECT t.account_id,
+SELECT COALESCE(t.account_id, 'unknown') as account_id,
+       t.org_id,
        t.source_id,
        t.name,
        t.source_uuid,
@@ -8,7 +9,7 @@ SELECT t.account_id,
 FROM   PUBLIC.api_sources t
 WHERE  ( t.koku_uuid IS NULL
           OR t.koku_uuid = '' )
-        OR ( t.account_id IS NULL
-              OR t.account_id = '' )
+        OR ( t.org_id IS NULL
+              OR t.org_id = '' )
         OR ( t.source_type IS NULL
               OR t.source_type = '' )

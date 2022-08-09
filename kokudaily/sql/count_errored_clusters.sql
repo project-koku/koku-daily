@@ -4,6 +4,7 @@ SELECT count (*) as "count",
        rm.operator_version,
        rm.cluster_id,
        c.account_id,
+       c.org_id,
        p.type as source_type
   FROM
     (SELECT provider_id,
@@ -26,6 +27,7 @@ SELECT count (*) as "count",
  WHERE (rm.operator_errors IS NOT NULL) AND rm.row_number = 1
  GROUP
     BY c.account_id,
+       c.org_id,
        rm.assembly_id,
        rm.operator_errors,
        rm.operator_version,

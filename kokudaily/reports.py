@@ -133,7 +133,7 @@ REPORTS = {
         "prometheus": {
             "type": "Gauge",
             "value": "count",
-            "labels": ["domain", "account_id"],
+            "labels": ["domain", "account_id", "org_id"],
         },
     },
     "count_providers_by_setup_state": {
@@ -153,7 +153,13 @@ REPORTS = {
         "prometheus": {
             "type": "Gauge",
             "value": "count",
-            "labels": ["domain", "account_id", "type", "setup_complete"],
+            "labels": [
+                "domain",
+                "account_id",
+                "org_id",
+                "type",
+                "setup_complete",
+            ],
         },
     },
     "invalid_sources": {
@@ -166,7 +172,7 @@ REPORTS = {
         "prometheus": {
             "type": "Gauge",
             "value": "count",
-            "labels": ["account_id", "source_type"],
+            "labels": ["account_id", "org_id", "source_type"],
         },
     },
     "orphaned_providers": {
@@ -179,7 +185,7 @@ REPORTS = {
         "prometheus": {
             "type": "Gauge",
             "value": "count",
-            "labels": ["account_id", "source_type"],
+            "labels": ["account_id", "org_id", "source_type"],
         },
     },
     "stale_providers": {
@@ -192,7 +198,7 @@ REPORTS = {
         "prometheus": {
             "type": "Gauge",
             "value": "count",
-            "labels": ["account_id", "source_type"],
+            "labels": ["account_id", "org_id", "source_type"],
         },
     },
     "active_providers": {
@@ -205,7 +211,7 @@ REPORTS = {
         "prometheus": {
             "type": "Gauge",
             "value": "count",
-            "labels": ["account_id", "source_type"],
+            "labels": ["account_id", "org_id", "source_type"],
         },
     },
     "incomplete_manifests": {
@@ -218,7 +224,7 @@ REPORTS = {
         "prometheus": {
             "type": "Gauge",
             "value": "count",
-            "labels": ["account_id", "source_type"],
+            "labels": ["account_id", "org_id", "source_type"],
         },
     },
     "empty_tenants": {

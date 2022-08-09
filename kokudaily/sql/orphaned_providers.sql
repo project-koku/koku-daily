@@ -1,4 +1,5 @@
-SELECT cust.account_id,
+SELECT COALESCE(cust.account_id, 'unknown') as account_id,
+       cust.org_id,
        t.*
 FROM   public.api_provider t
        left join public.api_sources AS sources
@@ -6,5 +7,6 @@ FROM   public.api_provider t
        join public.api_customer AS cust
          ON t.customer_id = cust.id
 WHERE  sources.koku_uuid IS NULL
-GROUP  BY t.uuid,
-          cust.account_id
+GROUP BY t.uuid,
+          cust.account_id,
+          cust.org_id

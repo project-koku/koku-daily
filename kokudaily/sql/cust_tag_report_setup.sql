@@ -57,6 +57,7 @@ begin
           join public.api_customer c
             on c.schema_name = t.schema_name
           where t.schema_name ~ '^acct'
+            or t.schema_name ~ '^org'
           order
             by t.schema_name
     loop
