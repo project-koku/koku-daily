@@ -1,4 +1,5 @@
 SELECT    count (DISTINCT rm.*),
+          COALESCE(c.account_id, 'unkown') as account_id,
           c.org_id,
           p.type as source_type
 FROM      public.reporting_common_costusagereportmanifest AS rm
@@ -20,7 +21,8 @@ ON        rm.id = counts.id
 WHERE     counts.num_processed_files != counts.num_total_files
 AND       rm.manifest_creation_datetime >= current_date - INTERVAL '1 day'
 AND       counts.manifest_updated_datetime < now() - INTERVAL '10 min' -- It has been longer than 10 minutes since we processed anything
-GROUP BY  c.org_id,
+GROUP BY  c.account_id,
+          c.org_id,
           p.type,
           rm.manifest_creation_datetime
 ;

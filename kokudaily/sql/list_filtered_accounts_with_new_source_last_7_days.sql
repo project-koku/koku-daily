@@ -5,7 +5,8 @@ WITH cust_non_redhat AS (
     WHERE  substring(t.email FROM '@(.*)$') != 'redhat.com'
     GROUP BY t.customer_id
 )
-SELECT c.org_id,
+SELECT COALESCE(c.account_id, 'unknown') as account_id,
+       c.org_id,
        cnr.domain,
        p.name,
        p.type,

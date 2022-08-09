@@ -1,4 +1,5 @@
-SELECT t.org_id,
+SELECT COALESCE(t.account_id, 'unknown') as account_id,
+       t.org_id,
        t.source_id,
        t.name,
        t.source_uuid,

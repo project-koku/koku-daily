@@ -7,6 +7,7 @@ WITH cust_non_redhat AS (
 ),
 filtered_customers AS (
          SELECT   c.id,
+                  COALESCE(c.account_id, 'unkown') as account_id,
                   c.org_id,
                   cnr.domain
          FROM     PUBLIC.api_customer c
@@ -19,13 +20,12 @@ filtered_customers AS (
                                    '12667745',
                                    '12667749')
          GROUP BY c.id,
-                  cnr.domain
-)
-SELECT   count (DISTINCT t.uuid),
+                  cnr.domain )
+SELECT   count (DISTINCT t.username),
+         fc.account_id,
          fc.org_id,
          fc.domain
-FROM     PUBLIC.api_provider t
+FROM     PUBLIC.api_user t
 JOIN     filtered_customers AS fc
 ON       t.customer_id = fc.id
-GROUP BY fc.org_id,
-         fc.domain
+GROUP BY fc.account_id, fc.org_id, fc.domain

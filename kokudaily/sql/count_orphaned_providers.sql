@@ -1,4 +1,5 @@
 SELECT count (DISTINCT t.*),
+       COALESCE(cust.account_id, 'unkown') as account_id,
        cust.org_id,
        t.type as source_type
 FROM   public.api_provider t
@@ -7,4 +8,4 @@ FROM   public.api_provider t
        join public.api_customer AS cust
          ON t.customer_id = cust.id
 WHERE  sources.koku_uuid IS NULL
-GROUP  BY cust.org_id, t.type
+GROUP BY cust.account_id, cust.org_id, t.type

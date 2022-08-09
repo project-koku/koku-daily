@@ -7,6 +7,7 @@
 ),
 filtered_customers AS (
     SELECT   c.id,
+             COALESCE(c.account_id, 'unkown') as account_id,
              c.org_id,
              cnr.domain
     FROM     PUBLIC.api_customer c
@@ -25,7 +26,8 @@ SELECT sum(configured) as count_configured,
        sum(mixed) as count_mixed,
        sum(unconfigured) as count_unconfigured
 FROM (
-    SELECT c.org_id,
+    SELECT c.account_id,
+           c.org_id,
            c.domain,
            CASE WHEN c.count_unconfigured > 0 AND c.count_configured > 0
                THEN 1
@@ -40,14 +42,16 @@ FROM (
                ELSE 0
                END as configured
     FROM (
-        SELECT   fc.org_id,
+        SELECT   fc.account_id,
+                 fc.org_id,
                  fc.domain,
                  count(p.uuid) FILTER (WHERE p.setup_complete = FALSE) as count_unconfigured,
                  count(p.uuid) FILTER (WHERE p.setup_complete = TRUE) as count_configured
         FROM     PUBLIC.api_provider p
         JOIN     filtered_customers AS fc
         ON       p.customer_id = fc.id
-        GROUP BY fc.org_id,
+        GROUP BY fc.account_id,
+                 fc.org_id,
                  fc.domain
     ) AS c
 ) as s

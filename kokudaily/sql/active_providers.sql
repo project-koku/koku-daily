@@ -8,7 +8,8 @@ WITH cte_manifest_temp AS (
              id
     DESC NULLS LAST
 )
-SELECT    cust.org_id,
+SELECT    COALESCE(cust.account_id, 'unkown') as account_id,
+          cust.org_id,
           t.*,
           auth.credentials->>'cluster_id' as cluster_id
 FROM      PUBLIC.api_provider t
