@@ -10,35 +10,49 @@ from kokudaily.engine import DB_ENGINE
 from pytz import UTC
 
 LOG = logging.getLogger(__name__)
+USAGE_REPORT_PARAMS = {
+    "start_time": datetime.datetime.now().replace(
+        day=1,
+        hour=0,
+        minute=0,
+        second=0,
+        microsecond=0,
+        tzinfo=UTC,
+    )
+    - relativedelta(months=1),
+    "end_time": datetime.datetime.now().replace(
+        day=1,
+        hour=0,
+        minute=0,
+        second=0,
+        microsecond=0,
+        tzinfo=UTC,
+    )
+    + relativedelta(months=1),
+    "provider_types": ["OCP"],  # MUST be a list!
+}
+
 REQUIRES = [
     {
-        # setup, teardown needed for customer size report(s)
+        # setup, teardown needed for customer-centric report(s)
         "setup": [
             {
-                "file": "sql/cust_size_report_setup.sql",
-                "frequency": "weekly",
+                "file": "sql/cust_cost_model_report_setup.sql",
                 "status": "",
-                "sql_parameters": {
-                    "start_time": datetime.datetime.now().replace(
-                        day=1,
-                        hour=0,
-                        minute=0,
-                        second=0,
-                        microsecond=0,
-                        tzinfo=UTC,
-                    )
-                    - relativedelta(months=1),
-                    "end_time": datetime.datetime.now().replace(
-                        day=1,
-                        hour=0,
-                        minute=0,
-                        second=0,
-                        microsecond=0,
-                        tzinfo=UTC,
-                    )
-                    + relativedelta(months=1),
-                    "provider_types": ["OCP"],  # MUST be a list!
-                },
+                "frequency": "weekly",
+                "sql_parameters": {},
+            },
+            {
+                "file": "sql/cust_node_report_setup.sql",
+                "status": "",
+                "frequency": "weekly",
+                "sql_parameters": USAGE_REPORT_PARAMS,
+            },
+            {
+                "file": "sql/cust_size_report_setup.sql",
+                "status": "",
+                "frequency": "weekly",
+                "sql_parameters": USAGE_REPORT_PARAMS,
             },
             {
                 "file": "sql/cust_tag_report_setup.sql",
@@ -48,6 +62,8 @@ REQUIRES = [
             },
         ],
         "teardown": [
+            {"file": "sql/cust_cost_model_report_teardown.sql", "status": ""},
+            {"file": "sql/cust_node_report_teardown.sql", "status": ""},
             {"file": "sql/cust_size_report_teardown.sql", "status": ""},
             {"file": "sql/cust_tag_report_teardown.sql", "status": ""},
         ],
@@ -55,10 +71,18 @@ REQUIRES = [
 ]
 
 WEEKLY_REPORTS = {
+    "cust_cost_model_report": {
+        "file": "sql/cust_cost_model_report.sql",
+        "target": "marketing",
+    },
+    "cust_node_report": {
+        "file": "sql/cust_node_report.sql",
+        "target": "marketing",
+    },
     "cust_size_report": {
         "file": "sql/cust_size_report.sql",
         "target": "engineering",
-    }
+    },
 }
 
 DAILY_REPORTS = {
@@ -256,6 +280,10 @@ REPORTS = {
         "file": "sql/count_errored_clusters.sql",
         "target": "engineering",
     },
+    "cust_providers": {
+        "file": "sql/cust_providers.sql",
+        "target": "marketing",
+    },
 }
 
 
@@ -264,7 +292,7 @@ def _read_sql(filename):
     data = None
     data_file = os.path.join(os.path.dirname(__file__), filename)
     if os.path.exists(data_file) and os.path.isfile(data_file):
-        with open(data_file, "r") as file:
+        with open(data_file) as file:
             data = file.read()
     return data
 
