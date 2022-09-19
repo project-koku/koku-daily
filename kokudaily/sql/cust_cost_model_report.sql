@@ -27,13 +27,13 @@ filtered_customers AS (
            cnr.domain
 )
 SELECT fc.account_id,
-       fc.org_id,
        cmr.cost_model_id,
        cmr.source_type,
        cmr.created_timestamp,
        cmr.updated_timestamp,
        cmr.provider_id,
-       cmr.cluster_id
+       cmr.cluster_id,
+       fc.org_id
   FROM __cust_cost_model_report cmr
   JOIN filtered_customers AS fc
     ON fc.schema_name = cmr.customer

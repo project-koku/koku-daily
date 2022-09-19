@@ -24,8 +24,8 @@ filtered_customers AS (
 )
 SELECT   count (DISTINCT t.uuid),
          fc.account_id,
-         fc.org_id,
-         fc.domain
+         fc.domain,
+         fc.org_id
 FROM     PUBLIC.api_provider t
 JOIN     filtered_customers AS fc
 ON       t.customer_id = fc.id

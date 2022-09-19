@@ -35,8 +35,7 @@ cost_report_manifest AS (
            manifest_completed_datetime
     FROM   public.reporting_common_costusagereportmanifest
 )
-SELECT    fc.account_id,
-          fc.org_id,
+SELECT    fc.account_id
           p.uuid,
           p.type,
           CASE WHEN crm.manifest_completed_datetime >= now() - interval '48 HOURS'
@@ -49,7 +48,8 @@ SELECT    fc.account_id,
           crm.assembly_id,
           crm.cluster_id,
           crm.operator_airgapped,
-          crm.operator_version
+          crm.operator_version,
+          fc.org_id
 FROM      public.api_provider p
 LEFT JOIN public.api_sources AS sources
 ON        p.uuid :: text = sources.koku_uuid

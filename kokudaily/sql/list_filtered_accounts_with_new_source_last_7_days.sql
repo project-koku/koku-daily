@@ -6,11 +6,11 @@ WITH cust_non_redhat AS (
     GROUP BY t.customer_id
 )
 SELECT COALESCE(c.account_id, 'unknown') as account_id,
-       c.org_id,
        cnr.domain,
        p.name,
        p.type,
-       p.setup_complete
+       p.setup_complete,
+       c.org_id
 FROM   PUBLIC.api_customer c
 JOIN   cust_non_redhat AS cnr
 ON     cnr.customer_id = c.id

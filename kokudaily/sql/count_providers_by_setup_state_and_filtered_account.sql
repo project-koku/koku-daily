@@ -23,14 +23,14 @@ filtered_customers AS (
                   cnr.domain )
 SELECT   count (DISTINCT t.uuid),
          fc.account_id,
-         fc.org_id,
          fc.domain,
          t.type,
          t.setup_complete,
          count (DISTINCT t.uuid) FILTER (WHERE t.type = 'OCP' AND t.setup_complete = TRUE) as ocp_setup_complete_count,
          count (DISTINCT t.uuid) FILTER (WHERE t.type = 'AWS' AND t.setup_complete = TRUE) as aws_setup_complete_count,
          count (DISTINCT t.uuid) FILTER (WHERE t.type = 'Azure' AND t.setup_complete = TRUE) as azure_setup_complete_count,
-         count (DISTINCT t.uuid) FILTER (WHERE t.type = 'GCP' AND t.setup_complete = TRUE) as gcp_setup_complete_count
+         count (DISTINCT t.uuid) FILTER (WHERE t.type = 'GCP' AND t.setup_complete = TRUE) as gcp_setup_complete_count,
+         fc.org_id
 FROM     PUBLIC.api_provider t
 JOIN     filtered_customers AS fc
 ON       t.customer_id = fc.id
