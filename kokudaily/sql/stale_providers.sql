@@ -9,8 +9,8 @@ WITH cte_manifest_temp AS (
     DESC NULLS LAST
 )
 SELECT    COALESCE(cust.account_id, 'unknown') as account_id,
-          cust.org_id,
-          t.*
+          t.*,
+          cust.org_id
 FROM      PUBLIC.api_provider t
 LEFT JOIN PUBLIC.api_sources AS sources
 ON        t.uuid :: text = sources.koku_uuid

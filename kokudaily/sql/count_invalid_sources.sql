@@ -1,7 +1,7 @@
 SELECT count (DISTINCT t.source_id),
        COALESCE(t.account_id, 'unknown') as account_id,
-       COALESCE(t.org_id, 'unknown') as org_id,
-       COALESCE(NULLIF(t.source_type, ''), 'unknown') as source_type
+       COALESCE(NULLIF(t.source_type, ''), 'unknown') as source_type,
+       COALESCE(t.org_id, 'unknown') as org_id
 FROM   PUBLIC.api_sources t
 WHERE  ( t.koku_uuid IS NULL
           OR t.koku_uuid = '' )

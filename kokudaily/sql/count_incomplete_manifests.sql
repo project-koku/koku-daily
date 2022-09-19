@@ -1,7 +1,7 @@
 SELECT    count (DISTINCT rm.*),
           COALESCE(c.account_id, 'unknown') as account_id,
-          c.org_id,
-          p.type as source_type
+          p.type as source_type,
+          c.org_id
 FROM      public.reporting_common_costusagereportmanifest AS rm
 JOIN      public.api_provider AS p
 ON        rm.provider_id = p.uuid

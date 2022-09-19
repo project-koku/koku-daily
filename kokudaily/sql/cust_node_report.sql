@@ -27,14 +27,14 @@ filtered_customers AS (
            cnr.domain
 )
 SELECT fc.account_id,
-       fc.org_id,
        cnr.provider_id,
        cnr.cluster_id,
        cnr.node,
        cnr.report_month,
        cnr.pod_count,
        cnr.cpu_cores,
-       cnr.memory_bytes
+       cnr.memory_bytes,
+       fc.org_id
   FROM __cust_node_report cnr
   JOIN filtered_customers AS fc
     ON cnr.customer = fc.schema_name

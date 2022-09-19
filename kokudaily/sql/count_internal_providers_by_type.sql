@@ -7,8 +7,8 @@
 filtered_customers AS (
     SELECT   c.id,
              COALESCE(c.account_id, 'unknown') as account_id,
-             c.org_id,
-             cnr.domain
+             cnr.domain,
+             c.org_id
     FROM     PUBLIC.api_customer c
     JOIN     cust_redhat AS cnr
     ON       cnr.customer_id = c.id

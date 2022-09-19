@@ -1,6 +1,6 @@
 SELECT COALESCE(cust.account_id, 'unknown') as account_id,
-       cust.org_id,
-       t.*
+       t.*,
+       cust.org_id
 FROM   public.api_provider t
        left join public.api_sources AS sources
               ON t.uuid :: text = sources.koku_uuid
