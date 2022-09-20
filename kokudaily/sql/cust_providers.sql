@@ -35,7 +35,7 @@ cost_report_manifest AS (
            manifest_completed_datetime
     FROM   public.reporting_common_costusagereportmanifest
 )
-SELECT    fc.account_id
+SELECT    fc.account_id,
           p.uuid,
           p.type,
           CASE WHEN crm.manifest_completed_datetime >= now() - interval '48 HOURS'
