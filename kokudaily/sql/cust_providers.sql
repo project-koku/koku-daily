@@ -44,7 +44,10 @@ SELECT    fc.account_id,
           END AS is_active,
           p.setup_complete,
           p.created_timestamp,
-          p.data_updated_timestamp,
+          CASE WHEN p.data_updated_timestamp IS NULL
+              THEN p.created_timestamp
+              ELSE p.data_updated_timestamp
+          END AS data_updated_timestamp,
           crm.assembly_id,
           crm.cluster_id,
           crm.operator_airgapped,
