@@ -75,6 +75,10 @@ WEEKLY_REPORTS = {
         "file": "sql/cust_cost_model_report.sql",
         "target": "marketing",
     },
+    "cust_cost_model_counts_report": {
+        "file": "sql/cust_cost_model_report_counts.sql",
+        "target": "marketing",
+    },
     "cust_node_report": {
         "file": "sql/cust_node_report.sql",
         "target": "marketing",
