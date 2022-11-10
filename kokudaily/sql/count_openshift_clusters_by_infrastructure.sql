@@ -28,4 +28,4 @@ JOIN public.api_customer as c
     ON p.customer_id = c.id
 JOIN filtered_customers as fc ON p.customer_id = fc.id
 WHERE p.type = 'OCP'
-    AND p.data_updated_timestamp >= now() - INTERVAL '2 days'
+    AND p.data_updated_timestamp >= now() - INTERVAL '48 HOURS'
