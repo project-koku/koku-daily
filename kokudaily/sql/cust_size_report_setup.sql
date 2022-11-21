@@ -7,9 +7,8 @@ create temporary table if not exists __cust_size_report (
     cluster_count bigint,
     node_count bigint,
     project_count bigint,
-    pod_count bigint,
-    tag_count bigint,
-    raw_lineitem_count bigint
+    pvc_count bigint,
+    tag_count bigint
 );
 create index ix__cust_size_report on __cust_size_report (customer, provider_id, report_month);
 -- loop construct
@@ -26,29 +25,29 @@ insert
             cluster_count,
             node_count,
             project_count,
-            pod_count,
-            tag_count,
-            raw_lineitem_count
+            pvc_count,
+            tag_count
         )
 select ''%%1$s'' as "customer",
         rpp.provider_id as "provider_id",
-        date_trunc(''month'', rp.interval_start)::date as "report_month",
+        rpp.report_period_start::date as "report_month",
         count(distinct rpp.cluster_id) as "cluster_count",
-        count(distinct ro.node) as "node_count",
-        count(distinct ro."namespace") as "project_count",
-        count(distinct ro.pod) as "pod_count",
-        max(rpml.tag_count) as "tag_count",
-        count(*) as "raw_lineitem_count"
+        count(distinct n.node) as "node_count",
+        count(distinct p.project) as "project_count",
+        -- count(distinct ro.pod) as "pod_count",
+        count(distinct pvc.persistent_volume_claim) as "pvc_count",
+        max(rpml.tag_count) as "tag_count"
+        -- count(*) as "raw_lineitem_count"
         -- starting with line item as we need the data ingestion counts
-  from %%1$s.reporting_ocpusagelineitem ro
-        -- usage report has the usage bounds
-  join %%1$s.reporting_ocpusagereport rp
-    on rp.id = ro.report_id
-    and rp.interval_start < ''%%3$s''::timestamptz  -- start must be < end bounds as end bounds is start of next month
-    and rp.interval_end >= ''%%2$s''::timestamptz     -- end must be >= start bounds
-        -- report period has the provider and cluster
-  join %%1$s.reporting_ocpusagereportperiod rpp
-    on rpp.id = ro.report_period_id
+  from %%1$s.reporting_ocpusagereportperiod rpp
+  join %%1$s.reporting_ocp_clusters c
+    on rpp.cluster_id = c.cluster_id
+  join %%1$s.reporting_ocp_nodes n
+    on c.uuid = n.cluster_id
+  join %%1$s.reporting_ocp_projects p
+    on c.uuid = p.cluster_id
+  join %%1$s.reporting_ocp_pvcs pvc
+    on c.uuid = pvc.cluster_id
         -- transformations to get tag counts
   join (
           select rpta.report_period_id,
@@ -74,10 +73,12 @@ select ''%%1$s'' as "customer",
           group
               by rpta.report_period_id
         ) as rpml(report_period_id, tag_count)
-    on rpml.report_period_id = ro.report_period_id
+    on rpml.report_period_id = rpp.id
+  where rpp.report_period_start < ''%%3$s''::timestamptz  -- start must be < end bounds as end bounds is start of next month
+    and rpp.report_period_start >= ''%%2$s''::timestamptz     -- end must be >= start bounds
   group
     by "customer",
-        "provider_id",
+        rpp."provider_id",
         "report_month";
 ';
 begin
