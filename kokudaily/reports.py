@@ -190,6 +190,11 @@ REPORTS = {
             ],
         },
     },
+    "count_openshift_clusters_by_infrastructure": {
+        "file": "sql/count_openshift_clusters_by_infrastructure.sql",
+        "namespace": "hccm-prod",
+        "target": "marketing",
+    },
     "invalid_sources": {
         "file": "sql/invalid_sources.sql",
         "target": "engineering",

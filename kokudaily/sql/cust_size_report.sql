@@ -5,14 +5,8 @@ select c.customer,
        c.cluster_count,
        c.node_count,
        c.project_count,
-       c.pod_count,
-       c.tag_count,
-       coalesce(p.raw_lineitem_count, 0) as prev_month_lineitem_count,
-       c.raw_lineitem_count as curr_month_lineitem_count,
-       c.raw_lineitem_count - coalesce(p.raw_lineitem_count, 0) as lineitem_change_count,
-       case when p.raw_lineitem_count is null then 1::numeric
-            else round(c.raw_lineitem_count::numeric / p.raw_lineitem_count::numeric, 4)
-       end::numeric as lineitem_change_pct
+       c.pvc_count,
+       c.tag_count
   from (
            -- current month view
            select m.customer,
@@ -21,27 +15,11 @@ select c.customer,
                   max(m.cluster_count) as cluster_count,
                   max(m.node_count) as node_count,
                   max(m.project_count) as project_count,
-                  max(m.pod_count) as pod_count,
-                  max(m.tag_count) as tag_count,
-                  max(m.raw_lineitem_count) as raw_lineitem_count
+                  max(m.pvc_count) as pvc_count,
+                  max(m.tag_count) as tag_count
              from __cust_size_report m
             group
                by m.customer,
                   m.provider_id
        ) c
-  left
-  join lateral (
-                   -- lateral join to get prior month's lineitem count (if available)
-                   select lp.customer,
-                          lp.provider_id,
-                          max(lp.report_month) as report_month,
-                          max(lp.raw_lineitem_count) as raw_lineitem_count
-                     from __cust_size_report lp
-                    where lp.customer = c.customer
-                      and lp.provider_id = c.provider_id
-                      and lp.report_month < c.report_month
-                    group
-                       by lp.customer,
-                          lp.provider_id
-               ) p
-    on true;
+;
