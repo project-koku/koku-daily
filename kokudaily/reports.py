@@ -48,12 +48,12 @@ REQUIRES = [
                 "frequency": "weekly",
                 "sql_parameters": USAGE_REPORT_PARAMS,
             },
-            {
-                "file": "sql/cust_size_report_setup.sql",
-                "status": "",
-                "frequency": "weekly",
-                "sql_parameters": USAGE_REPORT_PARAMS,
-            },
+            # {
+            #     "file": "sql/cust_size_report_setup.sql",
+            #     "status": "",
+            #     "frequency": "weekly",
+            #     "sql_parameters": USAGE_REPORT_PARAMS,
+            # },
             {
                 "file": "sql/cust_tag_report_setup.sql",
                 "status": "",
@@ -83,10 +83,10 @@ WEEKLY_REPORTS = {
         "file": "sql/cust_node_report.sql",
         "target": "marketing",
     },
-    "cust_size_report": {
-        "file": "sql/cust_size_report.sql",
-        "target": "engineering",
-    },
+    # "cust_size_report": {
+    #     "file": "sql/cust_size_report.sql",
+    #     "target": "engineering",
+    # },
 }
 
 DAILY_REPORTS = {
