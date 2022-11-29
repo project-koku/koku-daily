@@ -83,6 +83,7 @@ WEEKLY_REPORTS = {
         "file": "sql/cust_node_report.sql",
         "target": "marketing",
     },
+    # Disabling cust size report for now
     # "cust_size_report": {
     #     "file": "sql/cust_size_report.sql",
     #     "target": "engineering",
