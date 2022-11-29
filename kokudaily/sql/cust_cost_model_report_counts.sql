@@ -76,8 +76,10 @@ SELECT fc.account_id,
     cm.count_active_cost_models_with_cloud_markup,
     cm.count_inactive_cost_models_with_cloud_markup
 FROM cte_tag_rates AS tr
-CROSS JOIN cte_distribution_type AS dt
-CROSS JOIN cte_cloud_markup AS cm
+JOIN cte_distribution_type AS dt
+    ON tr.customer = dt.customer
+JOIN cte_cloud_markup AS cm
+    ON tr.customer = cm.customer
 JOIN filtered_customers AS fc
     ON fc.schema_name = tr.customer
 ;
