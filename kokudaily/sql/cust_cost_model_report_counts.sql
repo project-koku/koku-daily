@@ -25,6 +25,10 @@ filtered_customers AS (
        BY  c.id,
            cnr.domain
 ),
+cte_cost_model_customers AS (
+    SELECT DISTINCT customer
+    FROM __cust_cost_model_report
+),
 cte_tag_rates AS (
     SELECT customer,
         count(DISTINCT cost_model_id) as count_total_cost_models_with_tag_rates,
@@ -75,11 +79,13 @@ SELECT fc.account_id,
     cm.count_total_cost_models_with_cloud_markup,
     cm.count_active_cost_models_with_cloud_markup,
     cm.count_inactive_cost_models_with_cloud_markup
-FROM cte_tag_rates AS tr
-JOIN cte_distribution_type AS dt
-    ON tr.customer = dt.customer
-JOIN cte_cloud_markup AS cm
-    ON tr.customer = cm.customer
+FROM cte_cost_model_customers cmc
 JOIN filtered_customers AS fc
-    ON fc.schema_name = tr.customer
+    ON fc.schema_name = cmc.customer
+LEFT JOIN cte_tag_rates AS tr
+    ON cmc.customer = tr.customer
+LEFT JOIN cte_distribution_type AS dt
+    ON tr.customer = dt.customer
+LEFT JOIN cte_cloud_markup AS cm
+    ON tr.customer = cm.customer
 ;
