@@ -83,9 +83,9 @@ FROM cte_cost_model_customers cmc
 JOIN filtered_customers AS fc
     ON fc.schema_name = cmc.customer
 LEFT JOIN cte_tag_rates AS tr
-    ON cmc.customer = tr.customer
+    ON tr.customer = cmc.customer
 LEFT JOIN cte_distribution_type AS dt
-    ON tr.customer = dt.customer
+    ON dt.customer = cmc.customer
 LEFT JOIN cte_cloud_markup AS cm
-    ON tr.customer = cm.customer
+    ON cm.customer = cmc.customer
 ;
