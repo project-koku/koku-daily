@@ -25,9 +25,16 @@ filtered_customers AS (
        BY  c.id,
            cnr.domain
 ),
+cte_active_provider_cost_models AS (
+    SELECT cmr.*
+    FROM __cust_cost_model_report as cmr
+    JOIN public.api_provider as p
+        ON p.uuid = cmr.provider_id
+    WHERE p.data_updated_timestamp >= now() - interval '48 HOURS'
+)
 cte_cost_model_customers AS (
     SELECT DISTINCT customer
-    FROM __cust_cost_model_report
+    FROM cte_active_provider_cost_models
 ),
 cte_tag_rates AS (
     SELECT customer,
