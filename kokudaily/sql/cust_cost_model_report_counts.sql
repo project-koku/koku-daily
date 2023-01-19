@@ -31,7 +31,7 @@ cte_active_provider_cost_models AS (
     JOIN public.api_provider as p
         ON p.uuid = cmr.provider_id
     WHERE p.data_updated_timestamp >= now() - interval '48 HOURS'
-)
+),
 cte_cost_model_customers AS (
     SELECT DISTINCT customer
     FROM cte_active_provider_cost_models
