@@ -29,7 +29,7 @@ cte_active_provider_cost_models AS (
     SELECT cmr.*
     FROM __cust_cost_model_report as cmr
     JOIN public.api_provider as p
-        ON p.uuid = cmr.provider_id
+        ON p.uuid::text = cmr.provider_id
     WHERE p.data_updated_timestamp >= now() - interval '48 HOURS'
 ),
 cte_cost_model_customers AS (
