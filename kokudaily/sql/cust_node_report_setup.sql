@@ -37,7 +37,7 @@ SELECT ''%%1$s'' AS "customer",
        max(ro.node_capacity_cpu_cores) AS "cpu_cores",
        max(ro.node_capacity_memory_bytes) AS "memory_bytes"
        -- starting with line item as we need the data ingestion counts
-FROM   %%1$s.reporting_ocpusagelineitem ro
+FROM   %%1$s.reporting_ocpusagelineitem_daily_summary ro
        -- usage report has the usage bounds
 JOIN   %%1$s.reporting_ocpusagereport rp
 ON     rp.id = ro.report_id
