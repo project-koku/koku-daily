@@ -39,11 +39,6 @@ SELECT ''%%1$s'' AS "customer",
        -- starting with line item as we need the data ingestion counts
 FROM   %%1$s.reporting_ocpusagelineitem_daily_summary ro
        -- usage report has the usage bounds
-JOIN   %%1$s.reporting_ocpusagereport rp
-ON     rp.id = ro.report_id
-AND    rp.interval_start < ''%%3$s''::timestamptz  -- start must be < end bounds as end bounds is start of next month
-AND    rp.interval_end >= ''%%2$s''::timestamptz   -- end must be >= start bounds
-       -- report period has the provider and cluster
 JOIN   %%1$s.reporting_ocpusagereportperiod rpp
 ON     rpp.id = ro.report_period_id
 GROUP
