@@ -6,7 +6,6 @@ CREATE TEMPORARY TABLE IF NOT EXISTS __cust_node_report (
     cluster_id text,
     node text,
     report_month date,
-    pod_count bigint,
     cpu_cores bigint,
     memory_gigabytes bigint
 );
@@ -24,7 +23,6 @@ INSERT
       cluster_id,
       node,
       report_month,
-      pod_count,
       cpu_cores,
       memory_gigabytes
   )
@@ -33,12 +31,13 @@ SELECT ''%%1$s'' AS "customer",
        rpp.cluster_id AS "cluster_id",
        ro.node as "node",
        date_trunc(''month'', rpp.report_period_start)::date AS "report_month",
-       0 AS "pod_count",
        max(ro.node_capacity_cpu_cores) AS "cpu_cores",
        max(ro.node_capacity_memory_gigabytes) AS "memory_gigabytes"
 FROM   %%1$s.reporting_ocpusagelineitem_daily_summary ro
 JOIN   %%1$s.reporting_ocpusagereportperiod rpp
 ON     rpp.id = ro.report_period_id
+WHERE ro.usage_start < ''%%3$s''::timestamptz
+AND ro.usage_start >= ''%%2$s''::timestamptz
 GROUP
    BY "customer",
       "provider_id",
