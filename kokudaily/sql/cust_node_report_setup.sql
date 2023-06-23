@@ -47,7 +47,7 @@ GROUP
 ';
 BEGIN
     FOR schema_rec IN
-        SELECT t.schema_name
+        SELECT DISTINCT t.schema_name
         FROM   public.api_tenant t
         JOIN   pg_namespace n
         ON     n.nspname = t.schema_name

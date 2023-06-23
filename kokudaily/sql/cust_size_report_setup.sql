@@ -83,7 +83,7 @@ select ''%%1$s'' as "customer",
 ';
 begin
     for schema_rec in
-        select t.schema_name
+        select distinct t.schema_name
           from public.api_tenant t
           join pg_namespace n
             on n.nspname = t.schema_name
