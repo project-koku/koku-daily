@@ -31,7 +31,6 @@ SELECT fc.account_id,
        cnr.cluster_id,
        cnr.node,
        cnr.report_month,
-       cnr.pod_count,
        cnr.cpu_cores,
        cnr.memory_bytes,
        fc.org_id
