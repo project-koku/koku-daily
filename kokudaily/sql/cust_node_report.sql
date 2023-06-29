@@ -32,7 +32,7 @@ SELECT fc.account_id,
        cnr.node,
        cnr.report_month,
        cnr.cpu_cores,
-       cnr.memory_bytes,
+       cnr.memory_gigabytes,
        fc.org_id
   FROM __cust_node_report cnr
   JOIN filtered_customers AS fc
