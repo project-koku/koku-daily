@@ -90,7 +90,10 @@ def prometheus(target, report_name, **report):
                         f"Setting gauge {metric_name} with labels {labels}"
                         f" with {gauge_labels} and value {value}."
                     )
-                    gauge.labels(**gauge_labels).set(int(value))
+                    try:
+                        gauge.labels(**gauge_labels).set(int(value))
+                    except ValueError as ve:
+                        LOG.error(ve, exc_info=True)
         else:
             LOG.warning(f"No captured metric data found for {metric_name}.")
     else:
