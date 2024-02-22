@@ -31,6 +31,24 @@ USAGE_REPORT_PARAMS = {
     + relativedelta(months=1),
     "provider_types": ["OCP"],  # MUST be a list!
 }
+THIS_MONTH_PARAMS = {
+    "start_time": datetime.datetime.now().replace(
+        day=1,
+        hour=0,
+        minute=0,
+        second=0,
+        microsecond=0,
+        tzinfo=UTC,
+    ),
+    "end_time": datetime.datetime.now().replace(
+        day=1,
+        hour=0,
+        minute=0,
+        second=0,
+        microsecond=0,
+        tzinfo=UTC,
+    ) + relativedelta(months=1)
+}
 
 REQUIRES = [
     {
@@ -60,12 +78,26 @@ REQUIRES = [
                 "frequency": "daily",
                 "sql_parameters": {},
             },
+            {
+                "file": "sql/key_metrics/cust_cloud_costs_data_setup.sql",
+                "status": "",
+                "frequency": "daily",
+                "sql_parameters": THIS_MONTH_PARAMS
+            },
+            {
+                "file": "sql/key_metrics/cust_openshift_costs_data_setup.sql",
+                "status": "",
+                "frequency": "daily",
+                "sql_parameters": THIS_MONTH_PARAMS
+            },
         ],
         "teardown": [
             {"file": "sql/cust_cost_model_report_teardown.sql", "status": ""},
             {"file": "sql/cust_node_report_teardown.sql", "status": ""},
             {"file": "sql/cust_size_report_teardown.sql", "status": ""},
             {"file": "sql/cust_tag_report_teardown.sql", "status": ""},
+            {"file": "sql/key_metrics/cust_cloud_costs_data_teardown.sql", "status": ""},
+            {"file": "sql/key_metrics/cust_openshift_costs_data_teardown.sql", "status": ""},
         ],
     }
 ]
@@ -94,7 +126,17 @@ DAILY_REPORTS = {
     "cust_tag_report": {
         "file": "sql/cust_tag_report.sql",
         "target": "engineering",
-    }
+    },
+    "customer_km_cloud_costs": {
+        "file": "sql/key_metrics/cust_cloud_costs_data.sql",
+        "target": "marketing",
+        "sql_parameters": THIS_MONTH_PARAMS
+    },
+    "customer_km_openshift_costs": {
+        "file": "sql/key_metrics/cust_openshift_costs_data.sql",
+        "target": "marketing",
+        "sql_parameters": THIS_MONTH_PARAMS
+    },
 }
 
 REPORTS = {
