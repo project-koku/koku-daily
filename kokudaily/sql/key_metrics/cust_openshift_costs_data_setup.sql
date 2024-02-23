@@ -32,7 +32,6 @@ INSERT INTO __cust_openshift_cost_report (
     sup_cost_model_memory_cost,
     sup_cost_model_volume_cost
 )
-
 WITH infra_raw AS (
     SELECT
         ''%%1$s'' AS "customer",
@@ -72,21 +71,21 @@ sup_costs AS (
         AND cost_model_rate_type=''Supplementary''
 )
 SELECT
-        -- awc.customer AS "customer", -- customer is used for grouping, but left off report for anonymity
-        COALESCE(ir.infrastructure_raw_cost, 0) AS "total_infrastructure_raw_cost",
-        ic.infra_total_cost_model+sc.sup_total_cost_model AS "total_cost_model_costs",
-        ic.infra_total_cost_model AS "infra_total_cost_model",
-        ic.infra_cost_model_cpu_cost AS "infra_cost_model_cpu_cost",
-        ic.infra_cost_model_memory_cost AS "infra_cost_model_memory_cost",
-        ic.infra_cost_model_volume_cost AS "infra_cost_model_volume_cost",
-        sc.sup_total_cost_model AS "sup_total_cost_model",
-        sc.sup_cost_model_cpu_cost AS "sup_cost_model_cpu_cost",
-        sc.sup_cost_model_memory_cost AS "sup_cost_model_memory_cost",
-        sc.sup_cost_model_volume_cost AS "sup_cost_model_volume_cost"
-    FROM
-        infra_raw ir
-        JOIN infra_costs ic ON ir.customer = ic.customer
-        JOIN sup_costs sc ON ir.customer = sc.customer
+    -- ir.customer AS "customer", -- customer is used for grouping, but left off report for anonymity
+    COALESCE(ir.infrastructure_raw_cost, 0) AS "total_infrastructure_raw_cost",
+    ic.infra_total_cost_model+sc.sup_total_cost_model AS "total_cost_model_costs",
+    ic.infra_total_cost_model AS "infra_total_cost_model",
+    ic.infra_cost_model_cpu_cost AS "infra_cost_model_cpu_cost",
+    ic.infra_cost_model_memory_cost AS "infra_cost_model_memory_cost",
+    ic.infra_cost_model_volume_cost AS "infra_cost_model_volume_cost",
+    sc.sup_total_cost_model AS "sup_total_cost_model",
+    sc.sup_cost_model_cpu_cost AS "sup_cost_model_cpu_cost",
+    sc.sup_cost_model_memory_cost AS "sup_cost_model_memory_cost",
+    sc.sup_cost_model_volume_cost AS "sup_cost_model_volume_cost"
+FROM
+    infra_raw ir
+    JOIN infra_costs ic ON ir.customer = ic.customer
+    JOIN sup_costs sc ON ir.customer = sc.customer
 ';
 BEGIN
     FOR schema_rec IN SELECT DISTINCT

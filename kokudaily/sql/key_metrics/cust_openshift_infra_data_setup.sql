@@ -95,6 +95,7 @@ storage_agg AS (
     FROM storage
 )
 SELECT
+    -- customer is used for grouping, but left off report for anonymity
     cluster_count,
     node_count,
     pvc_count,

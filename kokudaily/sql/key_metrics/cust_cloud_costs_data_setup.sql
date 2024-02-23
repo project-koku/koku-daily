@@ -58,27 +58,26 @@ gcp_costs AS (
 oci_costs AS (
     SELECT
         ''%%1$s'' AS "customer",
-        SUM(
-            COST) AS "oci_cost"
+        SUM(cost) AS "oci_cost"
     FROM
         %%1$s.reporting_oci_cost_summary_p
     WHERE
         usage_start >= ''%%2$s''::date
         AND usage_start < ''%%3$s''::date
 )
-    SELECT
-        -- awc.customer AS "customer", -- customer is used for grouping, but left off report for anonymity
-        awc.aws_unblended_cost AS "aws_unblended_cost",
-        awc.aws_calculated_amortized_cost AS "aws_calculated_amortized_cost",
-        azc.azure_pretax_cost AS "azure_pretax_cost",
-        gc.gcp_unblended_cost AS "gcp_unblended_cost",
-        gc.gcp_total AS "gcp_total",
-        oc.oci_cost AS "oci_cost"
-    FROM
-        aws_costs awc
-        JOIN azure_costs azc ON awc.customer = azc.customer
-        JOIN gcp_costs gc ON awc.customer = gc.customer
-        JOIN oci_costs oc ON awc.customer = oc.customer
+SELECT
+    -- awc.customer AS "customer", -- customer is used for grouping, but left off report for anonymity
+    awc.aws_unblended_cost AS "aws_unblended_cost",
+    awc.aws_calculated_amortized_cost AS "aws_calculated_amortized_cost",
+    azc.azure_pretax_cost AS "azure_pretax_cost",
+    gc.gcp_unblended_cost AS "gcp_unblended_cost",
+    gc.gcp_total AS "gcp_total",
+    oc.oci_cost AS "oci_cost"
+FROM
+    aws_costs awc
+    JOIN azure_costs azc ON awc.customer = azc.customer
+    JOIN gcp_costs gc ON awc.customer = gc.customer
+    JOIN oci_costs oc ON awc.customer = oc.customer
 ';
 BEGIN
     FOR schema_rec IN SELECT DISTINCT
