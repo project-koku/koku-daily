@@ -90,6 +90,12 @@ REQUIRES = [
                 "frequency": "daily",
                 "sql_parameters": THIS_MONTH_PARAMS
             },
+            {
+                "file": "sql/key_metrics/cust_openshift_infra_data_setup.sql",
+                "status": "",
+                "frequency": "daily",
+                "sql_parameters": THIS_MONTH_PARAMS
+            },
         ],
         "teardown": [
             {"file": "sql/cust_cost_model_report_teardown.sql", "status": ""},
@@ -98,6 +104,7 @@ REQUIRES = [
             {"file": "sql/cust_tag_report_teardown.sql", "status": ""},
             {"file": "sql/key_metrics/cust_cloud_costs_data_teardown.sql", "status": ""},
             {"file": "sql/key_metrics/cust_openshift_costs_data_teardown.sql", "status": ""},
+            {"file": "sql/key_metrics/cust_openshift_infra_data_teardown.sql", "status": ""},
         ],
     }
 ]
@@ -134,6 +141,11 @@ DAILY_REPORTS = {
     },
     "customer_km_openshift_costs": {
         "file": "sql/key_metrics/cust_openshift_costs_data.sql",
+        "target": "marketing",
+        "sql_parameters": THIS_MONTH_PARAMS
+    },
+    "customer_km_openshift_infra": {
+        "file": "sql/key_metrics/cust_openshift_infra_data.sql",
         "target": "marketing",
         "sql_parameters": THIS_MONTH_PARAMS
     },
@@ -400,6 +412,7 @@ def run_reports(filter_target=None):
                 data = []
                 data_dicts = []
                 tempfile = os.path.join(temp_dir, f"{report_name}.csv")
+                print(tempfile)
                 with open(tempfile, "w", newline="") as csv_file:
                     writer = csv.writer(csv_file)
                     writer.writerow(keys)

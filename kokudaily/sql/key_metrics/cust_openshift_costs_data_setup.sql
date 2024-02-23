@@ -38,7 +38,7 @@ WITH infra_raw AS (
         ''%%1$s'' AS "customer",
         SUM(infrastructure_raw_cost) AS "infrastructure_raw_cost"
     FROM
-        org1234567.reporting_ocp_cost_summary_p
+        %%1$s.reporting_ocp_cost_summary_p
     WHERE
         usage_start >= ''%%2$s''::date
         AND usage_start < ''%%3$s''::date
@@ -51,7 +51,7 @@ infra_costs AS (
         SUM(cost_model_volume_cost) AS "infra_cost_model_volume_cost",
         SUM(cost_model_cpu_cost+cost_model_memory_cost+cost_model_volume_cost) AS "infra_total_cost_model"
     FROM
-        org1234567.reporting_ocp_cost_summary_p
+        %%1$s.reporting_ocp_cost_summary_p
     WHERE
         usage_start >= ''%%2$s''::date
         AND usage_start < ''%%3$s''::date
@@ -65,7 +65,7 @@ sup_costs AS (
         SUM(cost_model_volume_cost) AS "sup_cost_model_volume_cost",
         SUM(cost_model_cpu_cost+cost_model_memory_cost+cost_model_volume_cost) AS "sup_total_cost_model"
     FROM
-        org1234567.reporting_ocp_cost_summary_p
+        %%1$s.reporting_ocp_cost_summary_p
     WHERE
         usage_start >= ''%%2$s''::date
         AND usage_start < ''%%3$s''::date
@@ -86,8 +86,7 @@ SELECT
     FROM
         infra_raw ir
         JOIN infra_costs ic ON ir.customer = ic.customer
-        JOIN sup_costs sc ON ir.customer = sc.customer;
-
+        JOIN sup_costs sc ON ir.customer = sc.customer
 ';
 BEGIN
     FOR schema_rec IN SELECT DISTINCT
