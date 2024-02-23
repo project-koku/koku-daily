@@ -412,7 +412,6 @@ def run_reports(filter_target=None):
                 data = []
                 data_dicts = []
                 tempfile = os.path.join(temp_dir, f"{report_name}.csv")
-                print(tempfile)
                 with open(tempfile, "w", newline="") as csv_file:
                     writer = csv.writer(csv_file)
                     writer.writerow(keys)
