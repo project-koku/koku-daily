@@ -27,18 +27,18 @@ filtered_customers AS (
 ),
 cost_report_manifest AS (
     SELECT provider_id,
-           row_number() OVER (PARTITION BY provider_id ORDER BY manifest_creation_datetime DESC) AS row_number,
+           row_number() OVER (PARTITION BY provider_id ORDER BY creation_datetime DESC) AS row_number,
            assembly_id,
            operator_airgapped,
            operator_version,
            cluster_id,
-           manifest_completed_datetime
+           completed_datetime
     FROM   public.reporting_common_costusagereportmanifest
 )
 SELECT    fc.account_id,
           p.uuid,
           p.type,
-          CASE WHEN crm.manifest_completed_datetime >= now() - interval '48 HOURS'
+          CASE WHEN crm.completed_datetime >= now() - interval '48 HOURS'
               THEN true
               ELSE false
           END AS is_active,
