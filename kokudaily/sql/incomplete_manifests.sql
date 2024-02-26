@@ -16,7 +16,7 @@ JOIN      public.api_customer AS c
 ON        p.customer_id = c.id
 JOIN (
     SELECT   rm.id,
-             count(rs.*) FILTER (WHERE completed_datetime IS NOT NULL) AS num_processed_files,
+             count(rs.*) FILTER (WHERE rs.completed_datetime IS NOT NULL) AS num_processed_files,
              count(rs.*) AS num_total_files,
              max(rs.completed_datetime) as updated_datetime
     FROM     public.reporting_common_costusagereportmanifest AS rm
