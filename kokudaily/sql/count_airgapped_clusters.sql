@@ -8,7 +8,7 @@ SELECT count (*) as "count",
        c.org_id
   FROM
     (SELECT provider_id,
-        row_number() OVER (PARTITION BY provider_id ORDER BY manifest_creation_datetime DESC) as row_number,
+        row_number() OVER (PARTITION BY provider_id ORDER BY creation_datetime DESC) as row_number,
         max(assembly_id) as assembly_id,
         operator_airgapped,
         max(operator_version) as operator_version,
@@ -18,7 +18,7 @@ SELECT count (*) as "count",
         operator_airgapped,
         operator_version,
         cluster_id,
-        manifest_creation_datetime
+        creation_datetime
     ) as rm
   JOIN public.api_provider AS p
     ON p.uuid = rm.provider_id
