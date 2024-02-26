@@ -23,47 +23,85 @@ INSERT INTO __cust_cloud_cost_report (
     gcp_unblended_cost,
     gcp_total,
     oci_cost)
-WITH aws_costs AS (
+WITH aws_costs_currencies AS (
     SELECT
         ''%%1$s'' AS "customer",
-        SUM(unblended_cost) AS "aws_unblended_cost",
-        SUM(calculated_amortized_cost) AS "aws_calculated_amortized_cost"
+        SUM(unblended_cost) AS "unblended_cost",
+        SUM(calculated_amortized_cost) AS "calculated_amortized_cost",
+        currency_code AS "currency"
     FROM
         %%1$s.reporting_aws_cost_summary_p
     WHERE
         usage_start >= ''%%2$s''::date
         AND usage_start < ''%%3$s''::date
+    GROUP BY currency
 ),
-azure_costs AS (
+aws_costs AS (
     SELECT
         ''%%1$s'' AS "customer",
-        SUM(pretax_cost) AS "azure_pretax_cost"
+        SUM(unblended_cost * pae.exchange_rate) AS "aws_unblended_cost",
+        SUM(calculated_amortized_cost * pae.exchange_rate) AS "aws_calculated_amortized_cost"
+    FROM aws_costs_currencies acc
+    JOIN public.api_exchangerates pae ON LOWER(pae.currency_type)=LOWER(acc.currency)
+),
+azure_costs_currencies AS (
+    SELECT
+        ''%%1$s'' AS "customer",
+        SUM(pretax_cost) AS "pretax_cost",
+        currency AS "currency"
     FROM
         %%1$s.reporting_azure_cost_summary_p
     WHERE
         usage_start >= ''%%2$s''::date
         AND usage_start < ''%%3$s''::date
+    GROUP BY currency
 ),
-gcp_costs AS (
+azure_costs AS (
     SELECT
         ''%%1$s'' AS "customer",
-        SUM(unblended_cost) AS "gcp_unblended_cost",
-        SUM(unblended_cost + credit_amount) AS "gcp_total"
+        SUM(pretax_cost * pae.exchange_rate) AS "azure_pretax_cost"
+    FROM azure_costs_currencies azcc
+    JOIN public.api_exchangerates pae ON LOWER(pae.currency_type)=LOWER(azcc.currency)
+),
+gcp_costs_currencies AS (
+    SELECT
+        ''%%1$s'' AS "customer",
+        SUM(unblended_cost) AS "unblended_cost",
+        SUM(credit_amount) AS "credit_amount",
+        currency AS "currency"
     FROM
         %%1$s.reporting_gcp_cost_summary_p
     WHERE
         usage_start >= ''%%2$s''::date
         AND usage_start < ''%%3$s''::date
+    GROUP BY currency
 ),
-oci_costs AS (
+gcp_costs AS (
     SELECT
         ''%%1$s'' AS "customer",
-        SUM(cost) AS "oci_cost"
+        SUM(unblended_cost * pae.exchange_rate) AS "gcp_unblended_cost",
+        SUM(unblended_cost * pae.exchange_rate + credit_amount * pae.exchange_rate) AS "gcp_total"
+    FROM gcp_costs_currencies gcc
+    JOIN public.api_exchangerates pae ON LOWER(pae.currency_type)=LOWER(gcc.currency)
+),
+oci_costs_currencies AS (
+    SELECT
+        ''%%1$s'' AS "customer",
+        SUM(cost) AS "cost",
+        currency AS "currency"
     FROM
         %%1$s.reporting_oci_cost_summary_p
     WHERE
         usage_start >= ''%%2$s''::date
         AND usage_start < ''%%3$s''::date
+    GROUP BY currency
+),
+oci_costs AS (
+    SELECT
+        ''%%1$s'' AS "customer",
+        SUM(cost * pae.exchange_rate) AS "oci_cost"
+    FROM oci_costs_currencies oc
+    JOIN public.api_exchangerates pae ON LOWER(pae.currency_type)=LOWER(oc.currency)
 )
 SELECT
     -- awc.customer AS "customer", -- customer is used for grouping, but left off report for anonymity
