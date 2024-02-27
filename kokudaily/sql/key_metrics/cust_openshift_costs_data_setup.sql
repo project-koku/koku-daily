@@ -32,43 +32,82 @@ INSERT INTO __cust_openshift_cost_report (
     sup_cost_model_memory_cost,
     sup_cost_model_volume_cost
 )
-WITH infra_raw AS (
+WITH infra_raw_currencies AS (
     SELECT
         ''%%1$s'' AS "customer",
-        SUM(infrastructure_raw_cost) AS "infrastructure_raw_cost"
+        SUM(infrastructure_raw_cost) AS "infrastructure_raw_cost",
+        raw_currency AS "currency"
     FROM
         %%1$s.reporting_ocp_cost_summary_p
     WHERE
         usage_start >= ''%%2$s''::date
         AND usage_start < ''%%3$s''::date
+    GROUP BY raw_currency
 ),
-infra_costs AS (
+infra_raw AS (
     SELECT
         ''%%1$s'' AS "customer",
-        SUM(cost_model_cpu_cost) AS "infra_cost_model_cpu_cost",
-        SUM(cost_model_memory_cost) AS "infra_cost_model_memory_cost",
-        SUM(cost_model_volume_cost) AS "infra_cost_model_volume_cost",
-        SUM(cost_model_cpu_cost+cost_model_memory_cost+cost_model_volume_cost) AS "infra_total_cost_model"
+        SUM(infrastructure_raw_cost * pae.exchange_rate) AS "infrastructure_raw_cost"
+    FROM infra_raw_currencies irc
+    JOIN public.api_exchangerates pae ON LOWER(pae.currency_type)=LOWER(irc.currency)
+),
+infra_costs_grouped_by_source AS (
+    SELECT
+        ''%%1$s'' AS "customer",
+        SUM(cost_model_cpu_cost) AS "cost_model_cpu_cost",
+        SUM(cost_model_memory_cost) AS "cost_model_memory_cost",
+        SUM(cost_model_volume_cost) AS "cost_model_volume_cost",
+        SUM(cost_model_cpu_cost+cost_model_memory_cost+cost_model_volume_cost) AS "cost_model_total",
+        source_uuid AS "provider_uuid",
+        currency AS "currency"
     FROM
         %%1$s.reporting_ocp_cost_summary_p
+    JOIN %%1$s.cost_model_map cmm ON cmm.provider_uuid = source_uuid
+    JOIN %%1$s.cost_model cm ON cm.uuid = cmm.cost_model_id
     WHERE
         usage_start >= ''%%2$s''::date
         AND usage_start < ''%%3$s''::date
         AND cost_model_rate_type=''Infrastructure''
+    GROUP BY source_uuid, currency
 ),
-sup_costs AS (
+infra_costs AS (
     SELECT
         ''%%1$s'' AS "customer",
-        SUM(cost_model_cpu_cost) AS "sup_cost_model_cpu_cost",
-        SUM(cost_model_memory_cost) AS "sup_cost_model_memory_cost",
-        SUM(cost_model_volume_cost) AS "sup_cost_model_volume_cost",
-        SUM(cost_model_cpu_cost+cost_model_memory_cost+cost_model_volume_cost) AS "sup_total_cost_model"
+        SUM(cost_model_cpu_cost * pae.exchange_rate) AS "infra_cost_model_cpu_cost",
+        SUM(cost_model_memory_cost * pae.exchange_rate) AS "infra_cost_model_memory_cost",
+        SUM(cost_model_volume_cost * pae.exchange_rate) AS "infra_cost_model_volume_cost",
+        SUM(cost_model_total * pae.exchange_rate) AS "infra_total_cost_model"
+    FROM infra_costs_grouped_by_source icgbs
+    JOIN public.api_exchangerates pae ON LOWER(pae.currency_type)=LOWER(icgbs.currency)
+),
+sup_costs_grouped_by_source AS (
+    SELECT
+        ''%%1$s'' AS "customer",
+        SUM(cost_model_cpu_cost) AS "cost_model_cpu_cost",
+        SUM(cost_model_memory_cost) AS "cost_model_memory_cost",
+        SUM(cost_model_volume_cost) AS "cost_model_volume_cost",
+        SUM(cost_model_cpu_cost+cost_model_memory_cost+cost_model_volume_cost) AS "cost_model_total",
+        source_uuid AS "provider_uuid",
+        currency AS "currency"
     FROM
         %%1$s.reporting_ocp_cost_summary_p
+    JOIN %%1$s.cost_model_map cmm ON cmm.provider_uuid = source_uuid
+    JOIN %%1$s.cost_model cm ON cm.uuid = cmm.cost_model_id
     WHERE
         usage_start >= ''%%2$s''::date
         AND usage_start < ''%%3$s''::date
         AND cost_model_rate_type=''Supplementary''
+    GROUP BY source_uuid, currency
+),
+sup_costs AS (
+    SELECT
+        ''%%1$s'' AS "customer",
+        SUM(cost_model_cpu_cost * pae.exchange_rate) AS "sup_cost_model_cpu_cost",
+        SUM(cost_model_memory_cost * pae.exchange_rate) AS "sup_cost_model_memory_cost",
+        SUM(cost_model_volume_cost * pae.exchange_rate) AS "sup_cost_model_volume_cost",
+        SUM(cost_model_total * pae.exchange_rate) AS "sup_total_cost_model"
+    FROM sup_costs_grouped_by_source scgbs
+    JOIN public.api_exchangerates pae ON LOWER(pae.currency_type)=LOWER(scgbs.currency)
 )
 SELECT
     -- ir.customer AS "customer", -- customer is used for grouping, but left off report for anonymity
