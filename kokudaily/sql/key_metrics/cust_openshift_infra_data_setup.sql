@@ -38,7 +38,7 @@ WITH compute AS (
     SELECT
         ''%%1$s'' AS "customer",
         cluster_id,
-        node,
+        count(distinct node) AS nodes,
         max(cluster_capacity_cpu_core_hours)/24 AS "clus_cap_cores",
         max(cluster_capacity_cpu_core_hours) AS "clus_cap_core_hours",
         max(cluster_capacity_memory_gigabyte_hours)/24 AS "clus_cap_mem",
@@ -50,14 +50,13 @@ WITH compute AS (
         AND usage_start < ''%%3$s''::date
         AND cost_model_rate_type IS NULL
     GROUP BY
-        cluster_id,
-        node
+        cluster_id
 ),
 compute_agg AS (
     SELECT
         ''%%1$s'' AS "customer",
         count(distinct cluster_id) AS cluster_count,
-        count(node) AS node_count,
+        sum(nodes) AS node_count,
         sum(clus_cap_cores) AS cluster_capacity_cores,
         sum(clus_cap_core_hours) AS cluster_capacity_core_hours,
         sum(clus_cap_mem) AS cluster_capacity_memory_gb,
