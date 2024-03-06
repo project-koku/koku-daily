@@ -149,6 +149,10 @@ DAILY_REPORTS = {
         "target": "marketing",
         "sql_parameters": THIS_MONTH_PARAMS
     },
+    "customer_km_totals": {
+        "file": "sql/key_metrics/cust_total_data.sql",
+        "target": "marketing",
+    },
 }
 
 REPORTS = {
@@ -363,7 +367,7 @@ def _read_sql(filename):
 
 def run_reports(filter_target=None):
     """Run the reports."""
-    today = datetime.datetime.utcnow()
+    today = datetime.datetime.now(datetime.timezone.utc)
     run_weeklys = Config.WEEKLY_REPORT_SCHEDULED_DAY == today.weekday()
     if run_weeklys:
         REPORTS.update(WEEKLY_REPORTS)
