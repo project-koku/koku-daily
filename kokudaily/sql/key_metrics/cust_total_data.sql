@@ -1,6 +1,6 @@
 WITH cloud_costs AS (
     SELECT
-        1 AS id,
+        month,
         SUM(aws_unblended_cost) AS total_aws_unblended_cost,
         SUM(aws_calculated_amortized_cost) AS total_aws_calculated_amortized_cost,
         SUM(azure_pretax_cost) AS total_azure_pretax_cost,
@@ -8,10 +8,11 @@ WITH cloud_costs AS (
         SUM(gcp_total) AS total_gcp_total,
         SUM(oci_cost) AS total_oci_total
     FROM __cust_cloud_cost_report
+    GROUP BY month
 ),
 ocp_costs AS (
     SELECT
-        1 AS id,
+        month,
         SUM(total_infrastructure_raw_cost) AS total_total_infrastructure_raw_cost,
         SUM(total_cost_model_costs) AS total_total_cost_model_costs,
         SUM(infra_total_cost_model) AS total_infra_total_cost_model,
@@ -23,10 +24,11 @@ ocp_costs AS (
         SUM(sup_cost_model_memory_cost) AS total_sup_cost_model_memory_cost,
         SUM(sup_cost_model_volume_cost) AS total_sup_cost_model_volume_cost
     FROM __cust_openshift_cost_report
+    GROUP BY month
 ),
 ocp_infras AS (
     SELECT
-        1 AS id,
+        month,
         SUM(cluster_count) AS total_cluster_count,
         SUM(node_count) AS total_node_count,
         SUM(pvc_count) AS total_pvc_count,
@@ -39,8 +41,10 @@ ocp_infras AS (
         SUM(pvc_capacity_gb) AS total_pvc_capacity_gb,
         SUM(pvc_capacity_gb_mo) AS total_pvc_capacity_gb_mo
     FROM __cust_openshift_infra_report
+    GROUP BY month
 )
 SELECT
+    month,
     total_aws_unblended_cost,
     total_aws_calculated_amortized_cost,
     total_azure_pretax_cost,
@@ -69,6 +73,7 @@ SELECT
     total_pvc_capacity_gb,
     total_pvc_capacity_gb_mo
 FROM cloud_costs cc
-JOIN ocp_costs oc ON cc.id = oc.id
-JOIN ocp_infras oi ON cc.id = oi.id
+FULL OUTER JOIN ocp_costs oc USING (month)
+FULL OUTER JOIN ocp_infras oi USING (month)
+ORDER BY month
 ;

@@ -39,7 +39,8 @@ THIS_MONTH_PARAMS = {
         second=0,
         microsecond=0,
         tzinfo=UTC,
-    ),
+    )
+    - relativedelta(months=2),
     "end_time": datetime.datetime.now().replace(
         day=1,
         hour=0,
@@ -47,7 +48,8 @@ THIS_MONTH_PARAMS = {
         second=0,
         microsecond=0,
         tzinfo=UTC,
-    ) + relativedelta(months=1)
+    )
+    + relativedelta(months=1),
 }
 
 REQUIRES = [
@@ -82,19 +84,19 @@ REQUIRES = [
                 "file": "sql/key_metrics/cust_cloud_costs_data_setup.sql",
                 "status": "",
                 "frequency": "daily",
-                "sql_parameters": THIS_MONTH_PARAMS
+                "sql_parameters": THIS_MONTH_PARAMS,
             },
             {
                 "file": "sql/key_metrics/cust_openshift_costs_data_setup.sql",
                 "status": "",
                 "frequency": "daily",
-                "sql_parameters": THIS_MONTH_PARAMS
+                "sql_parameters": THIS_MONTH_PARAMS,
             },
             {
                 "file": "sql/key_metrics/cust_openshift_infra_data_setup.sql",
                 "status": "",
                 "frequency": "daily",
-                "sql_parameters": THIS_MONTH_PARAMS
+                "sql_parameters": THIS_MONTH_PARAMS,
             },
         ],
         "teardown": [
@@ -102,9 +104,18 @@ REQUIRES = [
             {"file": "sql/cust_node_report_teardown.sql", "status": ""},
             {"file": "sql/cust_size_report_teardown.sql", "status": ""},
             {"file": "sql/cust_tag_report_teardown.sql", "status": ""},
-            {"file": "sql/key_metrics/cust_cloud_costs_data_teardown.sql", "status": ""},
-            {"file": "sql/key_metrics/cust_openshift_costs_data_teardown.sql", "status": ""},
-            {"file": "sql/key_metrics/cust_openshift_infra_data_teardown.sql", "status": ""},
+            {
+                "file": "sql/key_metrics/cust_cloud_costs_data_teardown.sql",
+                "status": "",
+            },
+            {
+                "file": "sql/key_metrics/cust_openshift_costs_data_teardown.sql",  # noqa: E501
+                "status": "",
+            },
+            {
+                "file": "sql/key_metrics/cust_openshift_infra_data_teardown.sql",  # noqa: E501
+                "status": "",
+            },
         ],
     }
 ]
@@ -137,17 +148,17 @@ DAILY_REPORTS = {
     "customer_km_cloud_costs": {
         "file": "sql/key_metrics/cust_cloud_costs_data.sql",
         "target": "marketing",
-        "sql_parameters": THIS_MONTH_PARAMS
+        "sql_parameters": THIS_MONTH_PARAMS,
     },
     "customer_km_openshift_costs": {
         "file": "sql/key_metrics/cust_openshift_costs_data.sql",
         "target": "marketing",
-        "sql_parameters": THIS_MONTH_PARAMS
+        "sql_parameters": THIS_MONTH_PARAMS,
     },
     "customer_km_openshift_infra": {
         "file": "sql/key_metrics/cust_openshift_infra_data.sql",
         "target": "marketing",
-        "sql_parameters": THIS_MONTH_PARAMS
+        "sql_parameters": THIS_MONTH_PARAMS,
     },
     "customer_km_totals": {
         "file": "sql/key_metrics/cust_total_data.sql",
