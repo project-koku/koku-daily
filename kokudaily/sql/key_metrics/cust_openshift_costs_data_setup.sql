@@ -37,7 +37,7 @@ INSERT INTO __cust_openshift_cost_report (
 WITH infra_raw_currencies AS (
     SELECT
         ''%%1$s'' AS "customer",
-        DATE_TRUNC(''month'', usage_start) AS month,
+        DATE_TRUNC(''month'', usage_start) AS "month",
         SUM(infrastructure_raw_cost) AS "infrastructure_raw_cost",
         raw_currency AS "currency"
     FROM
@@ -50,7 +50,7 @@ WITH infra_raw_currencies AS (
 infra_raw AS (
     SELECT
         ''%%1$s'' AS "customer",
-        month as "month",
+        month AS "month",
         SUM(infrastructure_raw_cost * pae.exchange_rate) AS "infrastructure_raw_cost"
     FROM infra_raw_currencies irc
     JOIN public.api_exchangerates pae ON LOWER(pae.currency_type)=LOWER(irc.currency)
@@ -59,7 +59,7 @@ infra_raw AS (
 infra_costs_grouped_by_source AS (
     SELECT
         ''%%1$s'' AS "customer",
-        DATE_TRUNC(''month'', usage_start) AS month,
+        DATE_TRUNC(''month'', usage_start) AS "month",
         SUM(cost_model_cpu_cost) AS "cost_model_cpu_cost",
         SUM(cost_model_memory_cost) AS "cost_model_memory_cost",
         SUM(cost_model_volume_cost) AS "cost_model_volume_cost",
@@ -79,7 +79,7 @@ infra_costs_grouped_by_source AS (
 infra_costs AS (
     SELECT
         ''%%1$s'' AS "customer",
-        month as "month",
+        month AS "month",
         SUM(cost_model_cpu_cost * pae.exchange_rate) AS "infra_cost_model_cpu_cost",
         SUM(cost_model_memory_cost * pae.exchange_rate) AS "infra_cost_model_memory_cost",
         SUM(cost_model_volume_cost * pae.exchange_rate) AS "infra_cost_model_volume_cost",
@@ -91,7 +91,7 @@ infra_costs AS (
 sup_costs_grouped_by_source AS (
     SELECT
         ''%%1$s'' AS "customer",
-        DATE_TRUNC(''month'', usage_start) AS month,
+        DATE_TRUNC(''month'', usage_start) AS "month",
         SUM(cost_model_cpu_cost) AS "cost_model_cpu_cost",
         SUM(cost_model_memory_cost) AS "cost_model_memory_cost",
         SUM(cost_model_volume_cost) AS "cost_model_volume_cost",
@@ -111,7 +111,7 @@ sup_costs_grouped_by_source AS (
 sup_costs AS (
     SELECT
         ''%%1$s'' AS "customer",
-        month as "month",
+        month AS "month",
         SUM(cost_model_cpu_cost * pae.exchange_rate) AS "sup_cost_model_cpu_cost",
         SUM(cost_model_memory_cost * pae.exchange_rate) AS "sup_cost_model_memory_cost",
         SUM(cost_model_volume_cost * pae.exchange_rate) AS "sup_cost_model_volume_cost",

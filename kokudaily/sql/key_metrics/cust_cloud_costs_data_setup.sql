@@ -29,7 +29,7 @@ INSERT INTO __cust_cloud_cost_report (
 WITH aws_costs_currencies AS (
     SELECT
         ''%%1$s'' AS "customer",
-        DATE_TRUNC(''month'', usage_start) AS month,
+        DATE_TRUNC(''month'', usage_start) AS "month",
         SUM(unblended_cost) AS "unblended_cost",
         SUM(calculated_amortized_cost) AS "calculated_amortized_cost",
         currency_code AS "currency"
@@ -43,7 +43,7 @@ WITH aws_costs_currencies AS (
 aws_costs AS (
     SELECT
         ''%%1$s'' AS "customer",
-        month as "month",
+        month AS "month",
         SUM(unblended_cost * pae.exchange_rate) AS "aws_unblended_cost",
         SUM(calculated_amortized_cost * pae.exchange_rate) AS "aws_calculated_amortized_cost"
     FROM aws_costs_currencies acc
@@ -53,7 +53,7 @@ aws_costs AS (
 azure_costs_currencies AS (
     SELECT
         ''%%1$s'' AS "customer",
-        DATE_TRUNC(''month'', usage_start) AS month,
+        DATE_TRUNC(''month'', usage_start) AS "month",
         SUM(pretax_cost) AS "pretax_cost",
         currency AS "currency"
     FROM
@@ -66,7 +66,7 @@ azure_costs_currencies AS (
 azure_costs AS (
     SELECT
         ''%%1$s'' AS "customer",
-        month as "month",
+        month AS "month",
         SUM(pretax_cost * pae.exchange_rate) AS "azure_pretax_cost"
     FROM azure_costs_currencies azcc
     JOIN public.api_exchangerates pae ON LOWER(pae.currency_type)=LOWER(azcc.currency)
@@ -75,7 +75,7 @@ azure_costs AS (
 gcp_costs_currencies AS (
     SELECT
         ''%%1$s'' AS "customer",
-        DATE_TRUNC(''month'', usage_start) AS month,
+        DATE_TRUNC(''month'', usage_start) AS "month",
         SUM(unblended_cost) AS "unblended_cost",
         SUM(credit_amount) AS "credit_amount",
         currency AS "currency"
@@ -89,7 +89,7 @@ gcp_costs_currencies AS (
 gcp_costs AS (
     SELECT
         ''%%1$s'' AS "customer",
-        month as "month",
+        month AS "month",
         SUM(unblended_cost * pae.exchange_rate) AS "gcp_unblended_cost",
         SUM(unblended_cost * pae.exchange_rate + credit_amount * pae.exchange_rate) AS "gcp_total"
     FROM gcp_costs_currencies gcc
@@ -99,7 +99,7 @@ gcp_costs AS (
 oci_costs_currencies AS (
     SELECT
         ''%%1$s'' AS "customer",
-        DATE_TRUNC(''month'', usage_start) AS month,
+        DATE_TRUNC(''month'', usage_start) AS "month",
         SUM(cost) AS "cost",
         currency AS "currency"
     FROM
@@ -112,7 +112,7 @@ oci_costs_currencies AS (
 oci_costs AS (
     SELECT
         ''%%1$s'' AS "customer",
-        month as "month",
+        month AS "month",
         SUM(cost * pae.exchange_rate) AS "oci_cost"
     FROM oci_costs_currencies oc
     JOIN public.api_exchangerates pae ON LOWER(pae.currency_type)=LOWER(oc.currency)
