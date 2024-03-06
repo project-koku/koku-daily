@@ -31,7 +31,7 @@ USAGE_REPORT_PARAMS = {
     + relativedelta(months=1),
     "provider_types": ["OCP"],  # MUST be a list!
 }
-THIS_MONTH_PARAMS = {
+LAST_3_MONTH_PARAMS = {
     "start_time": datetime.datetime.now().replace(
         day=1,
         hour=0,
@@ -84,19 +84,19 @@ REQUIRES = [
                 "file": "sql/key_metrics/cust_cloud_costs_data_setup.sql",
                 "status": "",
                 "frequency": "daily",
-                "sql_parameters": THIS_MONTH_PARAMS,
+                "sql_parameters": LAST_3_MONTH_PARAMS,
             },
             {
                 "file": "sql/key_metrics/cust_openshift_costs_data_setup.sql",
                 "status": "",
                 "frequency": "daily",
-                "sql_parameters": THIS_MONTH_PARAMS,
+                "sql_parameters": LAST_3_MONTH_PARAMS,
             },
             {
                 "file": "sql/key_metrics/cust_openshift_infra_data_setup.sql",
                 "status": "",
                 "frequency": "daily",
-                "sql_parameters": THIS_MONTH_PARAMS,
+                "sql_parameters": LAST_3_MONTH_PARAMS,
             },
         ],
         "teardown": [
@@ -148,17 +148,17 @@ DAILY_REPORTS = {
     "customer_km_cloud_costs": {
         "file": "sql/key_metrics/cust_cloud_costs_data.sql",
         "target": "marketing",
-        "sql_parameters": THIS_MONTH_PARAMS,
+        "sql_parameters": LAST_3_MONTH_PARAMS,
     },
     "customer_km_openshift_costs": {
         "file": "sql/key_metrics/cust_openshift_costs_data.sql",
         "target": "marketing",
-        "sql_parameters": THIS_MONTH_PARAMS,
+        "sql_parameters": LAST_3_MONTH_PARAMS,
     },
     "customer_km_openshift_infra": {
         "file": "sql/key_metrics/cust_openshift_infra_data.sql",
         "target": "marketing",
-        "sql_parameters": THIS_MONTH_PARAMS,
+        "sql_parameters": LAST_3_MONTH_PARAMS,
     },
     "customer_km_totals": {
         "file": "sql/key_metrics/cust_total_data.sql",
