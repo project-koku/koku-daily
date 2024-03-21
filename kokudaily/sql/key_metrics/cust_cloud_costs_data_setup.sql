@@ -3,7 +3,7 @@ DROP TABLE IF EXISTS __cust_cloud_cost_report;
 -- create temp table for results
 CREATE TEMPORARY TABLE IF NOT EXISTS __cust_cloud_cost_report (
     id serial,
-    month date,
+    date date,
     aws_unblended_cost numeric(33, 2),
     aws_calculated_amortized_cost numeric(33, 2),
     azure_pretax_cost numeric(33, 2),
@@ -18,7 +18,7 @@ DECLARE
     schema_rec record;
     stmt_tmpl text = '
 INSERT INTO __cust_cloud_cost_report (
-    month,
+    date,
     aws_unblended_cost,
     aws_calculated_amortized_cost,
     azure_pretax_cost,
@@ -29,7 +29,7 @@ INSERT INTO __cust_cloud_cost_report (
 WITH aws_costs_currencies AS (
     SELECT
         ''%%1$s'' AS "customer",
-        DATE_TRUNC(''month'', usage_start) AS "month",
+        usage_start AS "date",
         SUM(unblended_cost) AS "unblended_cost",
         SUM(calculated_amortized_cost) AS "calculated_amortized_cost",
         currency_code AS "currency"
@@ -38,22 +38,22 @@ WITH aws_costs_currencies AS (
     WHERE
         usage_start >= ''%%2$s''::date
         AND usage_start < ''%%3$s''::date
-    GROUP BY currency, month
+    GROUP BY currency, usage_start
 ),
 aws_costs AS (
     SELECT
         ''%%1$s'' AS "customer",
-        month AS "month",
+        date AS "date",
         SUM(unblended_cost * pae.exchange_rate) AS "aws_unblended_cost",
         SUM(calculated_amortized_cost * pae.exchange_rate) AS "aws_calculated_amortized_cost"
     FROM aws_costs_currencies acc
     JOIN public.api_exchangerates pae ON LOWER(pae.currency_type)=LOWER(acc.currency)
-    GROUP BY month
+    GROUP BY date
 ),
 azure_costs_currencies AS (
     SELECT
         ''%%1$s'' AS "customer",
-        DATE_TRUNC(''month'', usage_start) AS "month",
+        usage_start AS "date",
         SUM(pretax_cost) AS "pretax_cost",
         currency AS "currency"
     FROM
@@ -61,21 +61,21 @@ azure_costs_currencies AS (
     WHERE
         usage_start >= ''%%2$s''::date
         AND usage_start < ''%%3$s''::date
-    GROUP BY currency, month
+    GROUP BY currency, usage_start
 ),
 azure_costs AS (
     SELECT
         ''%%1$s'' AS "customer",
-        month AS "month",
+        date AS "date",
         SUM(pretax_cost * pae.exchange_rate) AS "azure_pretax_cost"
     FROM azure_costs_currencies azcc
     JOIN public.api_exchangerates pae ON LOWER(pae.currency_type)=LOWER(azcc.currency)
-    GROUP BY month
+    GROUP BY date
 ),
 gcp_costs_currencies AS (
     SELECT
         ''%%1$s'' AS "customer",
-        DATE_TRUNC(''month'', usage_start) AS "month",
+        usage_start AS "date",
         SUM(unblended_cost) AS "unblended_cost",
         SUM(credit_amount) AS "credit_amount",
         currency AS "currency"
@@ -84,22 +84,22 @@ gcp_costs_currencies AS (
     WHERE
         usage_start >= ''%%2$s''::date
         AND usage_start < ''%%3$s''::date
-    GROUP BY currency, month
+    GROUP BY currency, usage_start
 ),
 gcp_costs AS (
     SELECT
         ''%%1$s'' AS "customer",
-        month AS "month",
+        date AS "date",
         SUM(unblended_cost * pae.exchange_rate) AS "gcp_unblended_cost",
         SUM(unblended_cost * pae.exchange_rate + credit_amount * pae.exchange_rate) AS "gcp_total"
     FROM gcp_costs_currencies gcc
     JOIN public.api_exchangerates pae ON LOWER(pae.currency_type)=LOWER(gcc.currency)
-    GROUP BY month
+    GROUP BY date
 ),
 oci_costs_currencies AS (
     SELECT
         ''%%1$s'' AS "customer",
-        DATE_TRUNC(''month'', usage_start) AS "month",
+        usage_start AS "date",
         SUM(cost) AS "cost",
         currency AS "currency"
     FROM
@@ -107,20 +107,20 @@ oci_costs_currencies AS (
     WHERE
         usage_start >= ''%%2$s''::date
         AND usage_start < ''%%3$s''::date
-    GROUP BY currency, month
+    GROUP BY currency, usage_start
 ),
 oci_costs AS (
     SELECT
         ''%%1$s'' AS "customer",
-        month AS "month",
+        date AS "date",
         SUM(cost * pae.exchange_rate) AS "oci_cost"
     FROM oci_costs_currencies oc
     JOIN public.api_exchangerates pae ON LOWER(pae.currency_type)=LOWER(oc.currency)
-    GROUP BY month
+    GROUP BY date
 )
 SELECT
     -- awc.customer AS "customer", -- customer is used for grouping, but left off report for anonymity
-    month AS "month",
+    date AS "date",
     awc.aws_unblended_cost AS "aws_unblended_cost",
     awc.aws_calculated_amortized_cost AS "aws_calculated_amortized_cost",
     azc.azure_pretax_cost AS "azure_pretax_cost",
@@ -129,10 +129,10 @@ SELECT
     oc.oci_cost AS "oci_cost"
 FROM
     aws_costs awc
-    FULL OUTER JOIN azure_costs azc USING (customer, month)
-    FULL OUTER JOIN gcp_costs gc USING (customer, month)
-    FULL OUTER JOIN oci_costs oc USING (customer, month)
-ORDER BY month
+    FULL OUTER JOIN azure_costs azc USING (customer, date)
+    FULL OUTER JOIN gcp_costs gc USING (customer, date)
+    FULL OUTER JOIN oci_costs oc USING (customer, date)
+ORDER BY date
 ';
 BEGIN
     FOR schema_rec IN SELECT DISTINCT

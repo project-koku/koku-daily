@@ -3,7 +3,7 @@ DROP TABLE IF EXISTS __cust_openshift_infra_report;
 -- create temp table for results
 CREATE TEMPORARY TABLE IF NOT EXISTS __cust_openshift_infra_report (
     id serial,
-    month date,
+    date date,
     cluster_count integer,
     node_count integer,
     pvc_count integer,
@@ -23,7 +23,7 @@ DECLARE
     schema_rec record;
     stmt_tmpl text = '
 INSERT INTO __cust_openshift_infra_report (
-    month,
+    date,
     cluster_count,
     node_count,
     pvc_count,
@@ -39,7 +39,7 @@ INSERT INTO __cust_openshift_infra_report (
 WITH compute AS (
     SELECT
         ''%%1$s'' AS "customer",
-        DATE_TRUNC(''month'', usage_start) AS "month",
+        usage_start AS "date",
         cluster_id,
         count(distinct node) AS nodes,
         max(cluster_capacity_cpu_core_hours)/24 AS "clus_cap_cores",
@@ -54,12 +54,12 @@ WITH compute AS (
         AND cost_model_rate_type IS NULL
     GROUP BY
         cluster_id,
-        month
+        usage_start
 ),
 compute_agg AS (
     SELECT
         ''%%1$s'' AS "customer",
-        month AS "month",
+        date AS "date",
         count(distinct cluster_id) AS cluster_count,
         sum(nodes) AS node_count,
         sum(clus_cap_cores) AS cluster_capacity_cores,
@@ -67,12 +67,12 @@ compute_agg AS (
         sum(clus_cap_mem) AS cluster_capacity_memory_gb,
         sum(clus_cap_mem_hours) AS cluster_capacity_memory_gb_hours
     FROM compute
-    GROUP BY month
+    GROUP BY date
 ),
 storage AS (
     SELECT
         ''%%1$s'' AS "customer",
-        DATE_TRUNC(''month'', usage_start) AS "month",
+        usage_start AS "date",
         cluster_id,
         persistentvolumeclaim,
         max(volume_request_storage_gigabyte_months) * extract(days FROM date_trunc(''month'', usage_start) + ''1 month - 1 day''::interval) AS "vol_req_gb",
@@ -88,23 +88,23 @@ storage AS (
     GROUP BY
         cluster_id,
         persistentvolumeclaim,
-        month
+        usage_start
 ),
 storage_agg AS (
     SELECT
         ''%%1$s'' AS "customer",
-        month AS "month",
+        date AS "date",
         count(persistentvolumeclaim) AS "pvc_count",
         sum(vol_req_gb) AS "volume_request_gb",
         sum(vol_req_gb_mo) AS "volume_request_gb_mo",
         sum(pvc_cap_gb) AS "pvc_capacity_gb",
         sum(pvc_cap_gb_mo) AS "pvc_capacity_gb_mo"
     FROM storage
-    GROUP BY month
+    GROUP BY date
 )
 SELECT
     -- customer is used for grouping, but left off report for anonymity
-    month,
+    date,
     cluster_count,
     node_count,
     pvc_count,
@@ -117,8 +117,8 @@ SELECT
     pvc_capacity_gb,
     pvc_capacity_gb_mo
 FROM compute_agg c
-FULL OUTER JOIN storage_agg s USING (customer, month)
-ORDER BY month
+FULL OUTER JOIN storage_agg s USING (customer, date)
+ORDER BY date
 ';
 BEGIN
     FOR schema_rec IN SELECT DISTINCT
