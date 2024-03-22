@@ -98,6 +98,12 @@ REQUIRES = [
                 "frequency": "daily",
                 "sql_parameters": LAST_3_MONTH_PARAMS,
             },
+            {
+                "file": "sql/key_metrics/cust_total_data_setup.sql",
+                "status": "",
+                "frequency": "daily",
+                "sql_parameters": LAST_3_MONTH_PARAMS,
+            },
         ],
         "teardown": [
             {"file": "sql/cust_cost_model_report_teardown.sql", "status": ""},
@@ -427,6 +433,7 @@ def run_reports(filter_target=None):
                 data = []
                 data_dicts = []
                 tempfile = os.path.join(temp_dir, f"{report_name}.csv")
+                LOG.debug(tempfile)
                 with open(tempfile, "w", newline="") as csv_file:
                     writer = csv.writer(csv_file)
                     writer.writerow(keys)

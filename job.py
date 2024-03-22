@@ -10,10 +10,10 @@ from kokudaily.send import s3
 from prometheus_client import push_to_gateway
 
 root = logging.getLogger()
-root.setLevel(logging.INFO)
+root.setLevel(Config.LOGLEVEL)
 
 handler = logging.StreamHandler(sys.stdout)
-handler.setLevel(logging.INFO)
+handler.setLevel(Config.LOGLEVEL)
 formatter = logging.Formatter(
     "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )

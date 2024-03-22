@@ -111,3 +111,5 @@ class Config:
         RUN_DAILY_REPORTS = True
     else:
         RUN_DAILY_REPORTS = False
+
+    LOGLEVEL = os.environ.get("LOGLEVEL", "INFO").upper()
