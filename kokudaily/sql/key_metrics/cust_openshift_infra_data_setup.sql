@@ -9,6 +9,12 @@ CREATE TEMPORARY TABLE IF NOT EXISTS __cust_openshift_infra_report (
     infra_node_count integer,
     control_plane_node_count integer,
     worker_node_count integer,
+    infra_node_cpu_cores numeric(33, 2),
+    control_plane_node_cpu_cores numeric(33, 2),
+    worker_node_cpu_cores numeric(33, 2),
+    infra_node_mem_gb numeric(33, 2),
+    control_plane_node_mem_gb numeric(33, 2),
+    worker_node_mem_gb numeric(33, 2),
     pvc_count integer,
     cluster_capacity_cores numeric(33, 2),
     cluster_capacity_core_hours numeric(33, 2),
@@ -32,6 +38,12 @@ INSERT INTO __cust_openshift_infra_report (
     infra_node_count,
     control_plane_node_count,
     worker_node_count,
+    infra_node_cpu_cores,
+    control_plane_node_cpu_cores,
+    worker_node_cpu_cores,
+    infra_node_mem_gb,
+    control_plane_node_mem_gb,
+    worker_node_mem_gb,
     pvc_count,
     cluster_capacity_cores,
     cluster_capacity_core_hours,
@@ -42,18 +54,30 @@ INSERT INTO __cust_openshift_infra_report (
     pvc_capacity_gb,
     pvc_capacity_gb_mo
 )
-with node_agg as(
+with node_info as (
     SELECT
-        ron.node_role,
-        count(ron.node_role) as role_count,
+        ron.node AS node,
+        ron.node_role AS node_role,
+        max(ropsbn.node_capacity_cpu_cores) AS node_capacity_cpu_cores,
+        max(ropsbn.node_capacity_memory_gigabytes) AS node_capacity_memory_gigabytes,
         usage_start
     FROM %%1$s.reporting_ocp_pod_summary_by_node_p ropsbn
     LEFT JOIN %%1$s.reporting_ocp_nodes ron USING (node)
     WHERE
         usage_start >= ''%%2$s''::date
         AND usage_start < ''%%3$s''::date
-    GROUP BY ron.node_role, usage_start
+    GROUP BY ron.node, ron.node_role, usage_start
     ORDER BY node_role, usage_start
+),
+node_agg as(
+    SELECT
+        node_role,
+        count(node_role) as role_count,
+        sum(node_capacity_cpu_cores) as node_cpu_cores,
+        sum(node_capacity_memory_gigabytes) as node_mem_gb,
+        usage_start
+    FROM node_info
+    GROUP BY node_role, usage_start
 ),
 node_counts AS (
     SELECT
@@ -61,6 +85,12 @@ node_counts AS (
         SUM(CASE WHEN node_role = ''infra'' THEN role_count END) as "infra_node_count",
         SUM(CASE WHEN node_role IN (''master'', ''control-plane'') THEN role_count END) as "control_plane_node_count",
         SUM(CASE WHEN node_role = ''worker'' THEN role_count END) as "worker_node_count",
+        SUM(CASE WHEN node_role = ''infra'' THEN node_cpu_cores END) as "infra_node_cpu_cores",
+        SUM(CASE WHEN node_role IN (''master'', ''control-plane'') THEN node_cpu_cores END) as "control_plane_node_cpu_cores",
+        SUM(CASE WHEN node_role = ''worker'' THEN node_cpu_cores END) as "worker_node_cpu_cores",
+        SUM(CASE WHEN node_role = ''infra'' THEN node_mem_gb END) as "infra_node_mem_gb",
+        SUM(CASE WHEN node_role IN (''master'', ''control-plane'') THEN node_mem_gb END) as "control_plane_node_mem_gb",
+        SUM(CASE WHEN node_role = ''worker'' THEN node_mem_gb END) as "worker_node_mem_gb",
         usage_start AS "date"
     FROM node_agg GROUP BY usage_start
 ),
@@ -138,6 +168,12 @@ SELECT
     infra_node_count,
     control_plane_node_count,
     worker_node_count,
+    infra_node_cpu_cores,
+    control_plane_node_cpu_cores,
+    worker_node_cpu_cores,
+    infra_node_mem_gb,
+    control_plane_node_mem_gb,
+    worker_node_mem_gb,
     pvc_count,
     cluster_capacity_cores,
     cluster_capacity_core_hours,
