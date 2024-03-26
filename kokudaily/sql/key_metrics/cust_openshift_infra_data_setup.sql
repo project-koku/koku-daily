@@ -6,6 +6,9 @@ CREATE TEMPORARY TABLE IF NOT EXISTS __cust_openshift_infra_report (
     date date,
     cluster_count integer,
     node_count integer,
+    infra_node_count integer,
+    control_plane_node_count integer,
+    worker_node_count integer,
     pvc_count integer,
     cluster_capacity_cores numeric(33, 2),
     cluster_capacity_core_hours numeric(33, 2),
@@ -26,6 +29,9 @@ INSERT INTO __cust_openshift_infra_report (
     date,
     cluster_count,
     node_count,
+    infra_node_count,
+    control_plane_node_count,
+    worker_node_count,
     pvc_count,
     cluster_capacity_cores,
     cluster_capacity_core_hours,
@@ -36,7 +42,29 @@ INSERT INTO __cust_openshift_infra_report (
     pvc_capacity_gb,
     pvc_capacity_gb_mo
 )
-WITH compute AS (
+with node_agg as(
+    SELECT
+        ron.node_role,
+        count(ron.node_role) as role_count,
+        usage_start
+    FROM %%1$s.reporting_ocp_pod_summary_by_node_p ropsbn
+    LEFT JOIN %%1$s.reporting_ocp_nodes ron USING (node)
+    WHERE
+        usage_start >= ''%%2$s''::date
+        AND usage_start < ''%%3$s''::date
+    GROUP BY ron.node_role, usage_start
+    ORDER BY node_role, usage_start
+),
+node_counts AS (
+    SELECT
+        ''%%1$s'' AS "customer",
+        SUM(CASE WHEN node_role = ''infra'' THEN role_count END) as "infra_node_count",
+        SUM(CASE WHEN node_role IN (''master'', ''control-plane'') THEN role_count END) as "control_plane_node_count",
+        SUM(CASE WHEN node_role = ''worker'' THEN role_count END) as "worker_node_count",
+        usage_start AS "date"
+    FROM node_agg GROUP BY usage_start
+),
+compute AS (
     SELECT
         ''%%1$s'' AS "customer",
         usage_start AS "date",
@@ -107,6 +135,9 @@ SELECT
     date,
     cluster_count,
     node_count,
+    infra_node_count,
+    control_plane_node_count,
+    worker_node_count,
     pvc_count,
     cluster_capacity_cores,
     cluster_capacity_core_hours,
@@ -118,6 +149,7 @@ SELECT
     pvc_capacity_gb_mo
 FROM compute_agg c
 FULL OUTER JOIN storage_agg s USING (customer, date)
+FULL OUTER JOIN node_counts n USING (customer, date)
 ORDER BY date
 ';
 BEGIN
