@@ -8,4 +8,5 @@ select
     SUM(oci_cost) AS "oci_cost"
 from __cust_cloud_cost_report
 GROUP BY DATE_TRUNC('month', date)
+ORDER BY DATE_TRUNC('month', date)
 ;
