@@ -12,4 +12,5 @@ select
     SUM(sup_cost_model_volume_cost) AS "sup_cost_model_volume_cost"
 from __cust_openshift_cost_report
 GROUP BY DATE_TRUNC('month', date)
+ORDER BY DATE_TRUNC('month', date)
 ;
