@@ -196,8 +196,8 @@ BEGIN
         JOIN pg_namespace n ON n.nspname = t.schema_name
         JOIN public.api_customer c ON c.schema_name = t.schema_name
     WHERE
-        t.schema_name ~ '^acct'
-        OR t.schema_name ~ '^org'
+        t.schema_name NOT IN ('acct6193296', 'acct6089719')
+        AND (t.schema_name ~ '^acct' OR t.schema_name ~ '^org')
     ORDER BY
         t.schema_name
     LOOP
