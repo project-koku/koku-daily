@@ -2,7 +2,7 @@ DROP TABLE IF EXISTS __cust_cloud_cost_report;
 
 -- create temp table for results
 CREATE TEMPORARY TABLE IF NOT EXISTS __cust_cloud_cost_report (
-    id serial,
+    schema text,
     date date,
     aws_unblended_cost numeric(33, 2),
     aws_calculated_amortized_cost numeric(33, 2),
@@ -18,6 +18,7 @@ DECLARE
     schema_rec record;
     stmt_tmpl text = '
 INSERT INTO __cust_cloud_cost_report (
+    schema,
     date,
     aws_unblended_cost,
     aws_calculated_amortized_cost,
@@ -119,7 +120,7 @@ oci_costs AS (
     GROUP BY date
 )
 SELECT
-    -- awc.customer AS "customer", -- customer is used for grouping, but left off report for anonymity
+    awc.customer AS "schema",
     date AS "date",
     awc.aws_unblended_cost AS "aws_unblended_cost",
     awc.aws_calculated_amortized_cost AS "aws_calculated_amortized_cost",

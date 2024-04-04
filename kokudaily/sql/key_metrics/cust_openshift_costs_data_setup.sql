@@ -2,7 +2,7 @@ DROP TABLE IF EXISTS __cust_openshift_cost_report;
 
 -- create temp table for results
 CREATE TEMPORARY TABLE IF NOT EXISTS __cust_openshift_cost_report (
-    id serial,
+    schema text,
     date date,
     total_infrastructure_raw_cost numeric(33, 2),
     total_cost_model_costs numeric(33, 2),
@@ -22,6 +22,7 @@ DECLARE
     schema_rec record;
     stmt_tmpl text = '
 INSERT INTO __cust_openshift_cost_report (
+    schema,
     date,
     total_infrastructure_raw_cost,
     total_cost_model_costs,
@@ -121,7 +122,7 @@ sup_costs AS (
     GROUP BY date
 )
 SELECT
-    -- ir.customer AS "customer", -- customer is used for grouping, but left off report for anonymity
+    ir.customer AS "schema",
     date AS "date",
     COALESCE(ir.infrastructure_raw_cost, 0) AS "total_infrastructure_raw_cost",
     ic.infra_total_cost_model+sc.sup_total_cost_model AS "total_cost_model_costs",

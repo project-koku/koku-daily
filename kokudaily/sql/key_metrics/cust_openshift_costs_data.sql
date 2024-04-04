@@ -1,4 +1,5 @@
 select
+    row_number() OVER () AS id, -- exclude schema to anonymize data
     to_char(DATE_TRUNC('month', date), 'YYYY-MM') AS month,
     SUM(total_infrastructure_raw_cost) AS "total_infrastructure_raw_cost",
     SUM(total_cost_model_costs) AS "total_cost_model_costs",
@@ -11,6 +12,6 @@ select
     SUM(sup_cost_model_memory_cost) AS "sup_cost_model_memory_cost",
     SUM(sup_cost_model_volume_cost) AS "sup_cost_model_volume_cost"
 from __cust_openshift_cost_report
-GROUP BY DATE_TRUNC('month', date)
-ORDER BY DATE_TRUNC('month', date)
+GROUP BY schema, DATE_TRUNC('month', date)
+ORDER BY schema, DATE_TRUNC('month', date)
 ;

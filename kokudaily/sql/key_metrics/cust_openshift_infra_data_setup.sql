@@ -2,7 +2,7 @@ DROP TABLE IF EXISTS __cust_openshift_infra_report;
 
 -- create temp table for results
 CREATE TEMPORARY TABLE IF NOT EXISTS __cust_openshift_infra_report (
-    id serial,
+    schema text,
     date date,
     cluster_count integer,
     node_count integer,
@@ -32,6 +32,7 @@ DECLARE
     schema_rec record;
     stmt_tmpl text = '
 INSERT INTO __cust_openshift_infra_report (
+    schema,
     date,
     cluster_count,
     node_count,
@@ -161,7 +162,7 @@ storage_agg AS (
     GROUP BY date
 )
 SELECT
-    -- customer is used for grouping, but left off report for anonymity
+    customer AS "schema",
     date,
     cluster_count,
     node_count,
