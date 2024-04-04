@@ -1,5 +1,5 @@
 select
-    row_number() OVER () AS id,
+    row_number() OVER () AS id, -- exclude schema to anonymize data
     to_char(DATE_TRUNC('month', date), 'YYYY-MM') AS month,
     SUM(aws_unblended_cost) AS "aws_unblended_cost",
     SUM(aws_calculated_amortized_cost) AS "aws_calculated_amortized_cost",
