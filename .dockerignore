@@ -6,7 +6,7 @@
 !Pipfile.lock
 !app.py
 !job.py
-!koku-daily/
+!kokudaily/
 
 # keep the test files out of the final image
 **/*test*
