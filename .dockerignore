@@ -1,0 +1,14 @@
+# Ignore everything
+**
+
+# ... except for dependencies and source
+!Pipfile
+!Pipfile.lock
+!app.py
+!job.py
+!kokudaily/
+
+# keep the test files out of the final image
+**/*test*
+**/__pycache__
+**/*.log
