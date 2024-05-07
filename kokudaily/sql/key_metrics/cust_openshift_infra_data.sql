@@ -1,5 +1,5 @@
 SELECT
-    row_number() OVER () AS id, -- exclude schema to anonymize data
+    md5(schema) AS id, -- exclude schema to anonymize data
     to_char(DATE_TRUNC('month', date), 'YYYY-MM') AS month,
     MAX(cluster_count) AS total_cluster_count,
     MAX(node_count) AS total_node_count,
