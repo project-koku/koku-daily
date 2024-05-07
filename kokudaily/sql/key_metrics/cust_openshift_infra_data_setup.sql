@@ -55,7 +55,12 @@ INSERT INTO __cust_openshift_infra_report (
     pvc_capacity_gb,
     pvc_capacity_gb_mo
 )
-with node_info as (
+WITH schemas AS (
+    SELECT
+        ''%%1$s'' AS "customer",
+        generate_series(date_trunc(''month'', ''%%2$s''::date), now(), ''1 day'')::date AS "date"
+),
+node_info as (
     SELECT
         ron.node AS node,
         ron.node_role AS node_role,
@@ -162,8 +167,8 @@ storage_agg AS (
     GROUP BY date
 )
 SELECT
-    customer AS "schema",
-    date,
+    s.customer AS "schema",
+    s.date,
     cluster_count,
     node_count,
     infra_node_count,
@@ -184,9 +189,11 @@ SELECT
     volume_request_gb_mo,
     pvc_capacity_gb,
     pvc_capacity_gb_mo
-FROM compute_agg c
-FULL OUTER JOIN storage_agg s USING (customer, date)
-FULL OUTER JOIN node_counts n USING (customer, date)
+FROM
+schemas s
+FULL OUTER JOIN compute_agg ca USING (customer, date)
+FULL OUTER JOIN storage_agg sa USING (customer, date)
+FULL OUTER JOIN node_counts nc USING (customer, date)
 ORDER BY date
 ';
 BEGIN

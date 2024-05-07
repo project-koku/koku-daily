@@ -35,7 +35,12 @@ INSERT INTO __cust_openshift_cost_report (
     sup_cost_model_memory_cost,
     sup_cost_model_volume_cost
 )
-WITH infra_raw_currencies AS (
+WITH schemas AS (
+    SELECT
+        ''%%1$s'' AS "customer",
+        generate_series(date_trunc(''month'', ''%%2$s''::date), now(), ''1 day'')::date AS "date"
+),
+infra_raw_currencies AS (
     SELECT
         ''%%1$s'' AS "customer",
         usage_start AS "date",
@@ -122,8 +127,8 @@ sup_costs AS (
     GROUP BY date
 )
 SELECT
-    ir.customer AS "schema",
-    date AS "date",
+    s.customer AS "schema",
+    s.date AS "date",
     COALESCE(ir.infrastructure_raw_cost, 0) AS "total_infrastructure_raw_cost",
     ic.infra_total_cost_model+sc.sup_total_cost_model AS "total_cost_model_costs",
     ic.infra_total_cost_model AS "infra_total_cost_model",
@@ -135,7 +140,8 @@ SELECT
     sc.sup_cost_model_memory_cost AS "sup_cost_model_memory_cost",
     sc.sup_cost_model_volume_cost AS "sup_cost_model_volume_cost"
 FROM
-    infra_costs ic
+    schemas s
+    FULL OUTER JOIN infra_costs ic USING (customer, date)
     FULL OUTER JOIN infra_raw ir USING (customer, date)
     FULL OUTER JOIN sup_costs sc USING (customer, date)
 ORDER BY date

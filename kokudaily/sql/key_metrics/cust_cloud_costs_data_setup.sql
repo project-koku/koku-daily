@@ -27,7 +27,12 @@ INSERT INTO __cust_cloud_cost_report (
     gcp_total,
     oci_cost
 )
-WITH aws_costs_currencies AS (
+WITH schemas AS (
+    SELECT
+        ''%%1$s'' AS "customer",
+        generate_series(date_trunc(''month'', ''%%2$s''::date), now(), ''1 day'')::date AS "date"
+),
+aws_costs_currencies AS (
     SELECT
         ''%%1$s'' AS "customer",
         usage_start AS "date",
@@ -120,8 +125,8 @@ oci_costs AS (
     GROUP BY date
 )
 SELECT
-    awc.customer AS "schema",
-    date AS "date",
+    s.customer AS "schema",
+    s.date AS "date",
     awc.aws_unblended_cost AS "aws_unblended_cost",
     awc.aws_calculated_amortized_cost AS "aws_calculated_amortized_cost",
     azc.azure_pretax_cost AS "azure_pretax_cost",
@@ -129,7 +134,8 @@ SELECT
     gc.gcp_total AS "gcp_total",
     oc.oci_cost AS "oci_cost"
 FROM
-    aws_costs awc
+    schemas s
+    FULL OUTER JOIN aws_costs awc USING (customer, date)
     FULL OUTER JOIN azure_costs azc USING (customer, date)
     FULL OUTER JOIN gcp_costs gc USING (customer, date)
     FULL OUTER JOIN oci_costs oc USING (customer, date)
