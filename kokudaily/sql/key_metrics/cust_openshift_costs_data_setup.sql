@@ -57,7 +57,7 @@ infra_raw AS (
     SELECT
         ''%%1$s'' AS "customer",
         date AS "date",
-        SUM(infrastructure_raw_cost * pae.exchange_rate) AS "infrastructure_raw_cost"
+        SUM(infrastructure_raw_cost / pae.exchange_rate) AS "infrastructure_raw_cost"
     FROM infra_raw_currencies irc
     JOIN public.api_exchangerates pae ON LOWER(pae.currency_type)=LOWER(irc.currency)
     GROUP BY date
@@ -86,10 +86,10 @@ infra_costs AS (
     SELECT
         ''%%1$s'' AS "customer",
         date AS "date",
-        SUM(cost_model_cpu_cost * pae.exchange_rate) AS "infra_cost_model_cpu_cost",
-        SUM(cost_model_memory_cost * pae.exchange_rate) AS "infra_cost_model_memory_cost",
-        SUM(cost_model_volume_cost * pae.exchange_rate) AS "infra_cost_model_volume_cost",
-        SUM(cost_model_total * pae.exchange_rate) AS "infra_total_cost_model"
+        SUM(cost_model_cpu_cost / pae.exchange_rate) AS "infra_cost_model_cpu_cost",
+        SUM(cost_model_memory_cost / pae.exchange_rate) AS "infra_cost_model_memory_cost",
+        SUM(cost_model_volume_cost / pae.exchange_rate) AS "infra_cost_model_volume_cost",
+        SUM(cost_model_total / pae.exchange_rate) AS "infra_total_cost_model"
     FROM infra_costs_grouped_by_source icgbs
     JOIN public.api_exchangerates pae ON LOWER(pae.currency_type)=LOWER(icgbs.currency)
     GROUP BY date
@@ -118,10 +118,10 @@ sup_costs AS (
     SELECT
         ''%%1$s'' AS "customer",
         date AS "date",
-        SUM(cost_model_cpu_cost * pae.exchange_rate) AS "sup_cost_model_cpu_cost",
-        SUM(cost_model_memory_cost * pae.exchange_rate) AS "sup_cost_model_memory_cost",
-        SUM(cost_model_volume_cost * pae.exchange_rate) AS "sup_cost_model_volume_cost",
-        SUM(cost_model_total * pae.exchange_rate) AS "sup_total_cost_model"
+        SUM(cost_model_cpu_cost / pae.exchange_rate) AS "sup_cost_model_cpu_cost",
+        SUM(cost_model_memory_cost / pae.exchange_rate) AS "sup_cost_model_memory_cost",
+        SUM(cost_model_volume_cost / pae.exchange_rate) AS "sup_cost_model_volume_cost",
+        SUM(cost_model_total / pae.exchange_rate) AS "sup_total_cost_model"
     FROM sup_costs_grouped_by_source scgbs
     JOIN public.api_exchangerates pae ON LOWER(pae.currency_type)=LOWER(scgbs.currency)
     GROUP BY date

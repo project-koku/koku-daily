@@ -50,8 +50,8 @@ aws_costs AS (
     SELECT
         ''%%1$s'' AS "customer",
         date AS "date",
-        SUM(unblended_cost * pae.exchange_rate) AS "aws_unblended_cost",
-        SUM(calculated_amortized_cost * pae.exchange_rate) AS "aws_calculated_amortized_cost"
+        SUM(unblended_cost / pae.exchange_rate) AS "aws_unblended_cost",
+        SUM(calculated_amortized_cost / pae.exchange_rate) AS "aws_calculated_amortized_cost"
     FROM aws_costs_currencies acc
     JOIN public.api_exchangerates pae ON LOWER(pae.currency_type)=LOWER(acc.currency)
     GROUP BY date
@@ -73,7 +73,7 @@ azure_costs AS (
     SELECT
         ''%%1$s'' AS "customer",
         date AS "date",
-        SUM(pretax_cost * pae.exchange_rate) AS "azure_pretax_cost"
+        SUM(pretax_cost / pae.exchange_rate) AS "azure_pretax_cost"
     FROM azure_costs_currencies azcc
     JOIN public.api_exchangerates pae ON LOWER(pae.currency_type)=LOWER(azcc.currency)
     GROUP BY date
@@ -96,8 +96,8 @@ gcp_costs AS (
     SELECT
         ''%%1$s'' AS "customer",
         date AS "date",
-        SUM(unblended_cost * pae.exchange_rate) AS "gcp_unblended_cost",
-        SUM(unblended_cost * pae.exchange_rate + credit_amount * pae.exchange_rate) AS "gcp_total"
+        SUM(unblended_cost / pae.exchange_rate) AS "gcp_unblended_cost",
+        SUM(unblended_cost / pae.exchange_rate + credit_amount / pae.exchange_rate) AS "gcp_total"
     FROM gcp_costs_currencies gcc
     JOIN public.api_exchangerates pae ON LOWER(pae.currency_type)=LOWER(gcc.currency)
     GROUP BY date
@@ -119,7 +119,7 @@ oci_costs AS (
     SELECT
         ''%%1$s'' AS "customer",
         date AS "date",
-        SUM(cost * pae.exchange_rate) AS "oci_cost"
+        SUM(cost / pae.exchange_rate) AS "oci_cost"
     FROM oci_costs_currencies oc
     JOIN public.api_exchangerates pae ON LOWER(pae.currency_type)=LOWER(oc.currency)
     GROUP BY date
