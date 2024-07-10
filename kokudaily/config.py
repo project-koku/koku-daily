@@ -113,3 +113,5 @@ class Config:
         RUN_DAILY_REPORTS = False
 
     LOGLEVEL = os.environ.get("LOGLEVEL", "INFO").upper()
+
+    KEY_METRICS_NUM_MONTHS = int(os.getenv("KEY_METRICS_NUM_MONTHS", 2))

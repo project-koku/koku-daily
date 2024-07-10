@@ -40,7 +40,7 @@ LAST_3_MONTH_PARAMS = {
         microsecond=0,
         tzinfo=UTC,
     )
-    - relativedelta(months=2),
+    - relativedelta(months=Config.KEY_METRICS_NUM_MONTHS),
     "end_time": datetime.datetime.now().replace(
         day=1,
         hour=0,

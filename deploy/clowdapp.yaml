@@ -56,6 +56,8 @@ objects:
             value: ${CLOWDER_ENABLED}
           - name: WEEKLY_REPORT_SCHEDULED_DAY
             value: ${WEEKLY_REPORT_SCHEDULED_DAY}
+          - name: KEY_METRICS_NUM_MONTHS
+            value: ${KEY_METRICS_NUM_MONTHS}
           - name: RUN_DAILY_REPORTS
             value: ${RUN_DAILY_REPORTS}
           - name: NAMESPACE
@@ -151,3 +153,5 @@ parameters:
   value: "6"
 - name: RUN_DAILY_REPORTS
   value: "true"
+- name: KEY_METRICS_NUM_MONTHS
+  value: "2"
