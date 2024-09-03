@@ -18,7 +18,7 @@ repos:
     args: [--line-length, "79"]
     require_serial: true
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v2.2.3
+  rev: v2.5.0
   hooks:
   - id: trailing-whitespace
   - id: end-of-file-fixer
