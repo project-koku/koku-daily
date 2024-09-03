@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
+FROM registry.access.redhat.com/ubi9-minimal:latest
 
 ARG PIPENV_DEV=False
 ARG USER_ID=1000
@@ -13,7 +13,7 @@ ENV PYTHON_VERSION=3.11 \
     PIPENV_VERBOSITY=-1 \
     APP_ROOT=/opt/kokudaily \
     APP_HOME=/opt/kokudaily/kokudaily \
-    PLATFORM="el8"
+    PLATFORM="el9"
 
 ENV SUMMARY="Koku-daily is a metrics collector for the Cost Management application" \
     DESCRIPTION="Koku-daily is a metrics collector for the Cost Management application"
@@ -22,8 +22,8 @@ LABEL summary="$SUMMARY" \
     description="$DESCRIPTION" \
     io.k8s.description="$DESCRIPTION" \
     io.k8s.display-name="Koku-daily" \
-    io.openshift.tags="builder,python,python38,rh-python38" \
-    com.redhat.component="python38-docker" \
+    io.openshift.tags="builder,python,python311,rh-python38" \
+    com.redhat.component="python311-docker" \
     name="Koku-daily" \
     version="1" \
     maintainer="Red Hat Cost Management Services"
