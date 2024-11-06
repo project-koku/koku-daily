@@ -2,11 +2,12 @@
 **
 
 # ... except for dependencies and source
-!Pipfile
-!Pipfile.lock
 !app.py
 !job.py
 !kokudaily/
+!LICENSE
+!Pipfile
+!Pipfile.lock
 
 # keep the test files out of the final image
 **/*test*

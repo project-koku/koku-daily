@@ -72,6 +72,7 @@ ENV \
 COPY kokudaily kokudaily
 COPY app.py .
 COPY job.py .
+COPY LICENSE /licenses/MIT.txt
 
 # create the koku user
 RUN \
