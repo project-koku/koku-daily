@@ -52,11 +52,6 @@ spec:
       description: Image tag expiration time, time values could be something like 1h, 2d, 3w for hours, days, and weeks, respectively.
       default: ""
 
-    - name: build-source-image
-      description: Build a source image.
-      type: string
-      default: "false"
-
     - name: build-args
       description: Array of --build-arg values ("arg=value" strings) for buildah
       type: array
@@ -226,40 +221,6 @@ spec:
             value: task
       when:
         - input: $(tasks.init.results.build)
-          operator: in
-          values:
-            - "true"
-
-    - name: build-source-image
-      params:
-        - name: BINARY_IMAGE
-          value: $(params.output-image)
-
-        - name: SOURCE_ARTIFACT
-          value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
-
-        - name: CACHI2_ARTIFACT
-          value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
-      runAfter:
-        - build-container
-      taskRef:
-        resolver: bundles
-        params:
-          - name: name
-            value: source-build-oci-ta
-
-          - name: bundle
-            value: quay.io/konflux-ci/tekton-catalog/task-source-build-oci-ta:0.1@sha256:178298b5c8bbc2f8fa91ef94aca57a5a2dcb3834c71c8835bae51a20fe30e4e7
-
-          - name: kind
-            value: task
-      when:
-        - input: $(tasks.init.results.build)
-          operator: in
-          values:
-            - "true"
-
-        - input: $(params.build-source-image)
           operator: in
           values:
             - "true"
