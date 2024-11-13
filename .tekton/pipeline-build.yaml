@@ -62,6 +62,11 @@ spec:
       type: string
       default: ""
 
+    - name: tag-prefix
+      description: Prefix added to additional tags
+      type: string
+      default: ""
+
   results:
     - name: IMAGE_URL
       description: ""
@@ -361,6 +366,10 @@ spec:
       params:
         - name: IMAGE
           value: $(tasks.build-container.results.IMAGE_URL)
+
+        - name: ADDITIONAL_TAGS
+          value:
+            - $(params.tag-prefix)$(tasks.clone-repository.results.short-commit)
       runAfter:
         - build-container
       taskRef:
@@ -442,3 +451,4 @@ spec:
 
           - name: kind
             value: task
+
