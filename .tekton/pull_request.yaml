@@ -27,7 +27,7 @@ spec:
       value: '{{ revision }}'
 
     - name: output-image
-      value: quay.io/redhat-user-workloads/cost-mgmt-dev-tenant/koku-daily:pr-{{ pull_request_number }}
+      value: quay.io/redhat-user-workloads/cost-mgmt-dev-tenant/koku-daily:pr-{{ pull_request_number }}-latest
 
     - name: image-expires-after
       value: 5d
@@ -37,6 +37,9 @@ spec:
 
     - name: path-context
       value: .
+
+    - name: tag-prefix
+      value: pr-{{ pull_request_number }}-
 
   pipelineRef:
     name: pipeline-build
