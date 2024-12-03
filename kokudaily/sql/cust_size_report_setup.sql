@@ -28,7 +28,7 @@ insert
             pvc_count,
             tag_count
         )
-select ''%%1$s'' as "customer",
+select ''%1$s'' as "customer",
         rpp.provider_id as "provider_id",
         rpp.report_period_start::date as "report_month",
         count(distinct rpp.cluster_id) as "cluster_count",
@@ -39,14 +39,14 @@ select ''%%1$s'' as "customer",
         max(rpml.tag_count) as "tag_count"
         -- count(*) as "raw_lineitem_count"
         -- starting with line item as we need the data ingestion counts
-  from %%1$s.reporting_ocpusagereportperiod rpp
-  join %%1$s.reporting_ocp_clusters c
+  from %1$s.reporting_ocpusagereportperiod rpp
+  join %1$s.reporting_ocp_clusters c
     on rpp.cluster_id = c.cluster_id
-  join %%1$s.reporting_ocp_nodes n
+  join %1$s.reporting_ocp_nodes n
     on c.uuid = n.cluster_id
-  join %%1$s.reporting_ocp_projects p
+  join %1$s.reporting_ocp_projects p
     on c.uuid = p.cluster_id
-  join %%1$s.reporting_ocp_pvcs pvc
+  join %1$s.reporting_ocp_pvcs pvc
     on c.uuid = pvc.cluster_id
         -- transformations to get tag counts
   join (
@@ -59,14 +59,14 @@ select ''%%1$s'' as "customer",
                   select distinct
                           ruls.report_period_id,
                           key || ''|'' || uv.value as "tag"
-                    from %%1$s.reporting_ocpusagepodlabel_summary ruls
+                    from %1$s.reporting_ocpusagepodlabel_summary ruls
                     left join lateral (select unnest(ruls.values)) as uv(value)
                       on true
                     union
                   select distinct
                           rsls.report_period_id,
                           key || ''|'' || sv.value as "tag"
-                    from %%1$s.reporting_ocpstoragevolumelabel_summary rsls
+                    from %1$s.reporting_ocpstoragevolumelabel_summary rsls
                     left join lateral (select unnest(rsls.values)) as sv(value)
                       on true
                 ) rpta(report_period_id, tag)
@@ -74,8 +74,8 @@ select ''%%1$s'' as "customer",
               by rpta.report_period_id
         ) as rpml(report_period_id, tag_count)
     on rpml.report_period_id = rpp.id
-  where rpp.report_period_start < ''%%3$s''::timestamptz  -- start must be < end bounds as end bounds is start of next month
-    and rpp.report_period_start >= ''%%2$s''::timestamptz     -- end must be >= start bounds
+  where rpp.report_period_start < ''%3$s''::timestamptz  -- start must be < end bounds as end bounds is start of next month
+    and rpp.report_period_start >= ''%2$s''::timestamptz     -- end must be >= start bounds
   group
     by "customer",
         rpp."provider_id",
@@ -91,12 +91,12 @@ begin
             on c.schema_name = t.schema_name
           join public.api_provider p
             on p.customer_id = c.id
-            and p."type" = any( %(provider_types)s )
+            and p."type" = any( (:provider_types) )
           where t.schema_name ~ '^acct'
             or t.schema_name ~ '^org'
           order
             by t.schema_name
     loop
-        execute format(stmt_tmpl, schema_rec.schema_name, %(start_time)s, %(end_time)s);
+        execute format(stmt_tmpl, schema_rec.schema_name, (:start_time), (:end_time));
     end loop;
 end $BODY$ language plpgsql;

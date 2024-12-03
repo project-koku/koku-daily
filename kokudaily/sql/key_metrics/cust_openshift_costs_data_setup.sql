@@ -37,25 +37,25 @@ INSERT INTO __cust_openshift_cost_report (
 )
 WITH schemas AS (
     SELECT
-        ''%%1$s'' AS "customer",
-        generate_series(date_trunc(''month'', ''%%2$s''::date), now(), ''1 day'')::date AS "date"
+        ''%1$s'' AS "customer",
+        generate_series(date_trunc(''month'', ''%2$s''::date), now(), ''1 day'')::date AS "date"
 ),
 infra_raw_currencies AS (
     SELECT
-        ''%%1$s'' AS "customer",
+        ''%1$s'' AS "customer",
         usage_start AS "date",
         SUM(infrastructure_raw_cost) AS "infrastructure_raw_cost",
         raw_currency AS "currency"
     FROM
-        %%1$s.reporting_ocp_cost_summary_p
+        %1$s.reporting_ocp_cost_summary_p
     WHERE
-        usage_start >= ''%%2$s''::date
-        AND usage_start < ''%%3$s''::date
+        usage_start >= ''%2$s''::date
+        AND usage_start < ''%3$s''::date
     GROUP BY raw_currency, usage_start
 ),
 infra_raw AS (
     SELECT
-        ''%%1$s'' AS "customer",
+        ''%1$s'' AS "customer",
         date AS "date",
         SUM(infrastructure_raw_cost / pae.exchange_rate) AS "infrastructure_raw_cost"
     FROM infra_raw_currencies irc
@@ -64,7 +64,7 @@ infra_raw AS (
 ),
 infra_costs_grouped_by_source AS (
     SELECT
-        ''%%1$s'' AS "customer",
+        ''%1$s'' AS "customer",
         usage_start AS "date",
         SUM(cost_model_cpu_cost) AS "cost_model_cpu_cost",
         SUM(cost_model_memory_cost) AS "cost_model_memory_cost",
@@ -73,18 +73,18 @@ infra_costs_grouped_by_source AS (
         source_uuid AS "provider_uuid",
         currency AS "currency"
     FROM
-        %%1$s.reporting_ocp_cost_summary_p
-    JOIN %%1$s.cost_model_map cmm ON cmm.provider_uuid = source_uuid
-    JOIN %%1$s.cost_model cm ON cm.uuid = cmm.cost_model_id
+        %1$s.reporting_ocp_cost_summary_p
+    JOIN %1$s.cost_model_map cmm ON cmm.provider_uuid = source_uuid
+    JOIN %1$s.cost_model cm ON cm.uuid = cmm.cost_model_id
     WHERE
-        usage_start >= ''%%2$s''::date
-        AND usage_start < ''%%3$s''::date
+        usage_start >= ''%2$s''::date
+        AND usage_start < ''%3$s''::date
         AND cost_model_rate_type=''Infrastructure''
     GROUP BY source_uuid, currency, usage_start
 ),
 infra_costs AS (
     SELECT
-        ''%%1$s'' AS "customer",
+        ''%1$s'' AS "customer",
         date AS "date",
         SUM(cost_model_cpu_cost / pae.exchange_rate) AS "infra_cost_model_cpu_cost",
         SUM(cost_model_memory_cost / pae.exchange_rate) AS "infra_cost_model_memory_cost",
@@ -96,7 +96,7 @@ infra_costs AS (
 ),
 sup_costs_grouped_by_source AS (
     SELECT
-        ''%%1$s'' AS "customer",
+        ''%1$s'' AS "customer",
         usage_start AS "date",
         SUM(cost_model_cpu_cost) AS "cost_model_cpu_cost",
         SUM(cost_model_memory_cost) AS "cost_model_memory_cost",
@@ -105,18 +105,18 @@ sup_costs_grouped_by_source AS (
         source_uuid AS "provider_uuid",
         currency AS "currency"
     FROM
-        %%1$s.reporting_ocp_cost_summary_p
-    JOIN %%1$s.cost_model_map cmm ON cmm.provider_uuid = source_uuid
-    JOIN %%1$s.cost_model cm ON cm.uuid = cmm.cost_model_id
+        %1$s.reporting_ocp_cost_summary_p
+    JOIN %1$s.cost_model_map cmm ON cmm.provider_uuid = source_uuid
+    JOIN %1$s.cost_model cm ON cm.uuid = cmm.cost_model_id
     WHERE
-        usage_start >= ''%%2$s''::date
-        AND usage_start < ''%%3$s''::date
+        usage_start >= ''%2$s''::date
+        AND usage_start < ''%3$s''::date
         AND cost_model_rate_type=''Supplementary''
     GROUP BY source_uuid, currency, usage_start
 ),
 sup_costs AS (
     SELECT
-        ''%%1$s'' AS "customer",
+        ''%1$s'' AS "customer",
         date AS "date",
         SUM(cost_model_cpu_cost / pae.exchange_rate) AS "sup_cost_model_cpu_cost",
         SUM(cost_model_memory_cost / pae.exchange_rate) AS "sup_cost_model_memory_cost",
@@ -159,6 +159,6 @@ BEGIN
     ORDER BY
         t.schema_name
     LOOP
-        EXECUTE format(stmt_tmpl, schema_rec.schema_name, %(start_time)s, %(end_time)s);
+        EXECUTE format(stmt_tmpl, schema_rec.schema_name, (:start_time), (:end_time));
     END LOOP;
 END $BODY$ LANGUAGE plpgsql;

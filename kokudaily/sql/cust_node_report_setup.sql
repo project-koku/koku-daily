@@ -55,12 +55,12 @@ BEGIN
         ON     c.schema_name = t.schema_name
         JOIN   public.api_provider p
         ON     p.customer_id = c.id
-        AND    p.type = any( %(provider_types)s )
+        AND    p.type = any( (:provider_types) )
         WHERE  t.schema_name ~ '^acct'
         OR     t.schema_name ~ '^org'
         ORDER
         BY     t.schema_name
     LOOP
-        EXECUTE format(stmt_tmpl, schema_rec.schema_name, %(start_time)s, %(end_time)s);
+        EXECUTE format(stmt_tmpl, schema_rec.schema_name, (:start_time), (:end_time));
     END LOOP;
 END $BODY$ LANGUAGE plpgsql;

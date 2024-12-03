@@ -70,7 +70,6 @@ ENV \
 
 # copy the src files into the workdir
 COPY kokudaily kokudaily
-COPY app.py .
 COPY job.py .
 COPY LICENSE /licenses/MIT.txt
 

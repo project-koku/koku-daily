@@ -29,26 +29,26 @@ INSERT INTO __cust_cloud_cost_report (
 )
 WITH schemas AS (
     SELECT
-        ''%%1$s'' AS "customer",
-        generate_series(date_trunc(''month'', ''%%2$s''::date), now(), ''1 day'')::date AS "date"
+        ''%1$s'' AS "customer",
+        generate_series(date_trunc(''month'', ''%2$s''::date), now(), ''1 day'')::date AS "date"
 ),
 aws_costs_currencies AS (
     SELECT
-        ''%%1$s'' AS "customer",
+        ''%1$s'' AS "customer",
         usage_start AS "date",
         SUM(unblended_cost) AS "unblended_cost",
         SUM(calculated_amortized_cost) AS "calculated_amortized_cost",
         currency_code AS "currency"
     FROM
-        %%1$s.reporting_aws_cost_summary_p
+        %1$s.reporting_aws_cost_summary_p
     WHERE
-        usage_start >= ''%%2$s''::date
-        AND usage_start < ''%%3$s''::date
+        usage_start >= ''%2$s''::date
+        AND usage_start < ''%3$s''::date
     GROUP BY currency, usage_start
 ),
 aws_costs AS (
     SELECT
-        ''%%1$s'' AS "customer",
+        ''%1$s'' AS "customer",
         date AS "date",
         SUM(unblended_cost / pae.exchange_rate) AS "aws_unblended_cost",
         SUM(calculated_amortized_cost / pae.exchange_rate) AS "aws_calculated_amortized_cost"
@@ -58,20 +58,20 @@ aws_costs AS (
 ),
 azure_costs_currencies AS (
     SELECT
-        ''%%1$s'' AS "customer",
+        ''%1$s'' AS "customer",
         usage_start AS "date",
         SUM(pretax_cost) AS "pretax_cost",
         currency AS "currency"
     FROM
-        %%1$s.reporting_azure_cost_summary_p
+        %1$s.reporting_azure_cost_summary_p
     WHERE
-        usage_start >= ''%%2$s''::date
-        AND usage_start < ''%%3$s''::date
+        usage_start >= ''%2$s''::date
+        AND usage_start < ''%3$s''::date
     GROUP BY currency, usage_start
 ),
 azure_costs AS (
     SELECT
-        ''%%1$s'' AS "customer",
+        ''%1$s'' AS "customer",
         date AS "date",
         SUM(pretax_cost / pae.exchange_rate) AS "azure_pretax_cost"
     FROM azure_costs_currencies azcc
@@ -80,21 +80,21 @@ azure_costs AS (
 ),
 gcp_costs_currencies AS (
     SELECT
-        ''%%1$s'' AS "customer",
+        ''%1$s'' AS "customer",
         usage_start AS "date",
         SUM(unblended_cost) AS "unblended_cost",
         SUM(credit_amount) AS "credit_amount",
         currency AS "currency"
     FROM
-        %%1$s.reporting_gcp_cost_summary_p
+        %1$s.reporting_gcp_cost_summary_p
     WHERE
-        usage_start >= ''%%2$s''::date
-        AND usage_start < ''%%3$s''::date
+        usage_start >= ''%2$s''::date
+        AND usage_start < ''%3$s''::date
     GROUP BY currency, usage_start
 ),
 gcp_costs AS (
     SELECT
-        ''%%1$s'' AS "customer",
+        ''%1$s'' AS "customer",
         date AS "date",
         SUM(unblended_cost / pae.exchange_rate) AS "gcp_unblended_cost",
         SUM(unblended_cost / pae.exchange_rate + credit_amount / pae.exchange_rate) AS "gcp_total"
@@ -104,20 +104,20 @@ gcp_costs AS (
 ),
 oci_costs_currencies AS (
     SELECT
-        ''%%1$s'' AS "customer",
+        ''%1$s'' AS "customer",
         usage_start AS "date",
         SUM(cost) AS "cost",
         currency AS "currency"
     FROM
-        %%1$s.reporting_oci_cost_summary_p
+        %1$s.reporting_oci_cost_summary_p
     WHERE
-        usage_start >= ''%%2$s''::date
-        AND usage_start < ''%%3$s''::date
+        usage_start >= ''%2$s''::date
+        AND usage_start < ''%3$s''::date
     GROUP BY currency, usage_start
 ),
 oci_costs AS (
     SELECT
-        ''%%1$s'' AS "customer",
+        ''%1$s'' AS "customer",
         date AS "date",
         SUM(cost / pae.exchange_rate) AS "oci_cost"
     FROM oci_costs_currencies oc
@@ -154,6 +154,6 @@ BEGIN
     ORDER BY
         t.schema_name
     LOOP
-        EXECUTE format(stmt_tmpl, schema_rec.schema_name, %(start_time)s, %(end_time)s);
+        EXECUTE format(stmt_tmpl, schema_rec.schema_name, (:start_time), (:end_time));
     END LOOP;
 END $BODY$ LANGUAGE plpgsql;

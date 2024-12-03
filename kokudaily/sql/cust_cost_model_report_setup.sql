@@ -33,7 +33,7 @@ INSERT
       provider_id,
       cluster_id
   )
-SELECT    ''%%1$s'' AS "customer",
+SELECT    ''%1$s'' AS "customer",
           cm.uuid AS "cost_model_id",
           cm.source_type AS "source_type",
           cm.created_timestamp AS "created_timestamp",
@@ -44,9 +44,9 @@ SELECT    ''%%1$s'' AS "customer",
           map.cost_model_id AS "cost_model_map_id",
           p.uuid AS "provider_id",
           auth.credentials->>''cluster_id'' AS "cluster_id"
-FROM      %%1$s.cost_model cm
+FROM      %1$s.cost_model cm
           -- use left join for provider mapping to keep unused cost models
-LEFT JOIN %%1$s.cost_model_map map
+LEFT JOIN %1$s.cost_model_map map
 ON        map.cost_model_id = cm.uuid
 JOIN      public.api_provider p
 ON        p.uuid = map.provider_uuid
