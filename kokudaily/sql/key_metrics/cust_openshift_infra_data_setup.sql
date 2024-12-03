@@ -57,8 +57,8 @@ INSERT INTO __cust_openshift_infra_report (
 )
 WITH schemas AS (
     SELECT
-        ''%%1$s'' AS "customer",
-        generate_series(date_trunc(''month'', ''%%2$s''::date), now(), ''1 day'')::date AS "date"
+        ''%1$s'' AS "customer",
+        generate_series(date_trunc(''month'', ''%2$s''::date), now(), ''1 day'')::date AS "date"
 ),
 node_info as (
     SELECT
@@ -67,11 +67,11 @@ node_info as (
         max(ropsbn.node_capacity_cpu_cores) AS node_capacity_cpu_cores,
         max(ropsbn.node_capacity_memory_gigabytes) AS node_capacity_memory_gigabytes,
         usage_start
-    FROM %%1$s.reporting_ocp_pod_summary_by_node_p ropsbn
-    LEFT JOIN %%1$s.reporting_ocp_nodes ron USING (node)
+    FROM %1$s.reporting_ocp_pod_summary_by_node_p ropsbn
+    LEFT JOIN %1$s.reporting_ocp_nodes ron USING (node)
     WHERE
-        usage_start >= ''%%2$s''::date
-        AND usage_start < ''%%3$s''::date
+        usage_start >= ''%2$s''::date
+        AND usage_start < ''%3$s''::date
     GROUP BY ron.node, ron.node_role, usage_start
     ORDER BY node_role, usage_start
 ),
@@ -87,7 +87,7 @@ node_agg as(
 ),
 node_counts AS (
     SELECT
-        ''%%1$s'' AS "customer",
+        ''%1$s'' AS "customer",
         SUM(CASE WHEN node_role = ''infra'' THEN role_count END) as "infra_node_count",
         SUM(CASE WHEN node_role IN (''master'', ''control-plane'') THEN role_count END) as "control_plane_node_count",
         SUM(CASE WHEN node_role = ''worker'' THEN role_count END) as "worker_node_count",
@@ -102,7 +102,7 @@ node_counts AS (
 ),
 compute AS (
     SELECT
-        ''%%1$s'' AS "customer",
+        ''%1$s'' AS "customer",
         usage_start AS "date",
         cluster_id,
         count(distinct node) AS nodes,
@@ -111,10 +111,10 @@ compute AS (
         max(cluster_capacity_memory_gigabyte_hours)/24 AS "clus_cap_mem",
         max(cluster_capacity_memory_gigabyte_hours) AS "clus_cap_mem_hours"
     FROM
-        %%1$s.reporting_ocp_pod_summary_by_node_p
+        %1$s.reporting_ocp_pod_summary_by_node_p
     WHERE
-        usage_start >= ''%%2$s''::date
-        AND usage_start < ''%%3$s''::date
+        usage_start >= ''%2$s''::date
+        AND usage_start < ''%3$s''::date
         AND cost_model_rate_type IS NULL
     GROUP BY
         cluster_id,
@@ -122,7 +122,7 @@ compute AS (
 ),
 compute_agg AS (
     SELECT
-        ''%%1$s'' AS "customer",
+        ''%1$s'' AS "customer",
         date AS "date",
         count(distinct cluster_id) AS cluster_count,
         sum(nodes) AS node_count,
@@ -135,7 +135,7 @@ compute_agg AS (
 ),
 storage AS (
     SELECT
-        ''%%1$s'' AS "customer",
+        ''%1$s'' AS "customer",
         usage_start AS "date",
         cluster_id,
         persistentvolumeclaim,
@@ -144,10 +144,10 @@ storage AS (
         max(persistentvolumeclaim_capacity_gigabyte_months) * extract(days FROM date_trunc(''month'', usage_start) + ''1 month - 1 day''::interval) AS "pvc_cap_gb",
         sum(persistentvolumeclaim_capacity_gigabyte_months) AS "pvc_cap_gb_mo"
     FROM
-        %%1$s.reporting_ocp_volume_summary_p
+        %1$s.reporting_ocp_volume_summary_p
     WHERE
-        usage_start >= ''%%2$s''::date
-        AND usage_start < ''%%3$s''::date
+        usage_start >= ''%2$s''::date
+        AND usage_start < ''%3$s''::date
         AND cost_model_rate_type IS NULL
     GROUP BY
         cluster_id,
@@ -156,7 +156,7 @@ storage AS (
 ),
 storage_agg AS (
     SELECT
-        ''%%1$s'' AS "customer",
+        ''%1$s'' AS "customer",
         date AS "date",
         count(persistentvolumeclaim) AS "pvc_count",
         sum(vol_req_gb) AS "volume_request_gb",
@@ -209,6 +209,6 @@ BEGIN
     ORDER BY
         t.schema_name
     LOOP
-        EXECUTE format(stmt_tmpl, schema_rec.schema_name, %(start_time)s, %(end_time)s);
+        EXECUTE format(stmt_tmpl, schema_rec.schema_name, (:start_time), (:end_time));
     END LOOP;
 END $BODY$ LANGUAGE plpgsql;

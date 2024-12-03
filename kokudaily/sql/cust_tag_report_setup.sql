@@ -23,21 +23,21 @@ insert
   )
   with cte_openshift_label_count AS (
     select count(distinct key) as key_count
-    from %%1$s.reporting_ocptags_values
+    from %1$s.reporting_ocptags_values
   ),
   cte_aws_tag_count AS (
     select count(distinct key) as key_count
-    from %%1$s.reporting_awstags_values
+    from %1$s.reporting_awstags_values
   ),
   cte_azure_tag_count AS (
     select count(distinct key) as key_count
-    from %%1$s.reporting_azuretags_values
+    from %1$s.reporting_azuretags_values
   ),
   cte_gcp_label_count AS (
     select count(distinct key) as key_count
-    from %%1$s.reporting_gcptags_values
+    from %1$s.reporting_gcptags_values
   )
-  select ''%%1$s'' as "customer",
+  select ''%1$s'' as "customer",
     ocp.key_count as openshift_label_key_count,
     aws.key_count as aws_tag_key_count,
     azure.key_count as azure_tag_key_count,

@@ -8,6 +8,7 @@ from dateutil.relativedelta import relativedelta
 from kokudaily.config import Config
 from kokudaily.engine import DB_ENGINE
 from pytz import UTC
+from sqlalchemy import text
 
 LOG = logging.getLogger(__name__)
 USAGE_REPORT_PARAMS = {
@@ -379,7 +380,7 @@ def _read_sql(filename):
     if os.path.exists(data_file) and os.path.isfile(data_file):
         with open(data_file) as file:
             data = file.read()
-    return data
+    return text(data)
 
 
 def run_reports(filter_target=None):
@@ -440,7 +441,7 @@ def run_reports(filter_target=None):
                     for row in rs:
                         writer.writerow(row)
                         data.append(row)
-                        data_dicts.append(dict(row))
+                        data_dicts.append(row._asdict())
                 target_obj = report_data.get(target, {})
                 target_obj[report_name] = {
                     "data": data,
