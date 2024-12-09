@@ -26,18 +26,18 @@ INSERT
       cpu_cores,
       memory_gigabytes
   )
-SELECT ''%%1$s'' AS "customer",
+SELECT ''%1$s'' AS "customer",
        rpp.provider_id AS "provider_id",
        rpp.cluster_id AS "cluster_id",
        ro.node as "node",
        date_trunc(''month'', rpp.report_period_start)::date AS "report_month",
        max(ro.node_capacity_cpu_cores) AS "cpu_cores",
        max(ro.node_capacity_memory_gigabytes) AS "memory_gigabytes"
-FROM   %%1$s.reporting_ocpusagelineitem_daily_summary ro
-JOIN   %%1$s.reporting_ocpusagereportperiod rpp
+FROM   %1$s.reporting_ocpusagelineitem_daily_summary ro
+JOIN   %1$s.reporting_ocpusagereportperiod rpp
 ON     rpp.id = ro.report_period_id
-WHERE ro.usage_start < ''%%3$s''::timestamptz
-AND ro.usage_start >= ''%%2$s''::timestamptz
+WHERE ro.usage_start < ''%3$s''::timestamptz
+AND ro.usage_start >= ''%2$s''::timestamptz
 GROUP
    BY "customer",
       "provider_id",
