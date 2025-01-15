@@ -16,7 +16,7 @@ metadata:
     pipelines.appstudio.openshift.io/type: build
 
   namespace: cost-mgmt-dev-tenant
-  name: koku-daily-push
+  name: koku-daily-on-push
 
 spec:
   params:
