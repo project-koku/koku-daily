@@ -8,8 +8,7 @@ CREATE TEMPORARY TABLE IF NOT EXISTS __cust_cloud_cost_report (
     aws_calculated_amortized_cost numeric(33, 2),
     azure_pretax_cost numeric(33, 2),
     gcp_unblended_cost numeric(33, 2),
-    gcp_total numeric(33, 2),
-    oci_cost numeric(33, 2)
+    gcp_total numeric(33, 2)
 );
 
 -- loop construct
@@ -24,8 +23,7 @@ INSERT INTO __cust_cloud_cost_report (
     aws_calculated_amortized_cost,
     azure_pretax_cost,
     gcp_unblended_cost,
-    gcp_total,
-    oci_cost
+    gcp_total
 )
 WITH schemas AS (
     SELECT
@@ -101,28 +99,6 @@ gcp_costs AS (
     FROM gcp_costs_currencies gcc
     JOIN public.api_exchangerates pae ON LOWER(pae.currency_type)=LOWER(gcc.currency)
     GROUP BY date
-),
-oci_costs_currencies AS (
-    SELECT
-        ''%1$s'' AS "customer",
-        usage_start AS "date",
-        SUM(cost) AS "cost",
-        currency AS "currency"
-    FROM
-        %1$s.reporting_oci_cost_summary_p
-    WHERE
-        usage_start >= ''%2$s''::date
-        AND usage_start < ''%3$s''::date
-    GROUP BY currency, usage_start
-),
-oci_costs AS (
-    SELECT
-        ''%1$s'' AS "customer",
-        date AS "date",
-        SUM(cost / pae.exchange_rate) AS "oci_cost"
-    FROM oci_costs_currencies oc
-    JOIN public.api_exchangerates pae ON LOWER(pae.currency_type)=LOWER(oc.currency)
-    GROUP BY date
 )
 SELECT
     s.customer AS "schema",
@@ -131,14 +107,12 @@ SELECT
     awc.aws_calculated_amortized_cost AS "aws_calculated_amortized_cost",
     azc.azure_pretax_cost AS "azure_pretax_cost",
     gc.gcp_unblended_cost AS "gcp_unblended_cost",
-    gc.gcp_total AS "gcp_total",
-    oc.oci_cost AS "oci_cost"
+    gc.gcp_total AS "gcp_total"
 FROM
     schemas s
     FULL OUTER JOIN aws_costs awc USING (customer, date)
     FULL OUTER JOIN azure_costs azc USING (customer, date)
     FULL OUTER JOIN gcp_costs gc USING (customer, date)
-    FULL OUTER JOIN oci_costs oc USING (customer, date)
 ORDER BY date
 ';
 BEGIN

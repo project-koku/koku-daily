@@ -5,8 +5,7 @@ WITH cloud_costs AS (
         SUM(aws_calculated_amortized_cost) AS total_aws_calculated_amortized_cost,
         SUM(azure_pretax_cost) AS total_azure_pretax_cost,
         SUM(gcp_unblended_cost) AS total_gcp_unblended_cost,
-        SUM(gcp_total) AS total_gcp_total,
-        SUM(oci_cost) AS total_oci_total
+        SUM(gcp_total) AS total_gcp_total
     FROM __cust_cloud_cost_report
     GROUP BY date
 ),
@@ -59,7 +58,6 @@ INSERT INTO public.__customer_total_data (
     total_azure_pretax_cost,
     total_gcp_unblended_cost,
     total_gcp_total,
-    total_oci_total,
     total_total_infrastructure_raw_cost,
     total_total_cost_model_costs,
     total_infra_total_cost_model,
@@ -97,7 +95,6 @@ INSERT INTO public.__customer_total_data (
     total_azure_pretax_cost,
     total_gcp_unblended_cost,
     total_gcp_total,
-    total_oci_total,
     total_total_infrastructure_raw_cost,
     total_total_cost_model_costs,
     total_infra_total_cost_model,
@@ -138,7 +135,6 @@ ON CONFLICT (date) DO UPDATE SET
     total_azure_pretax_cost=EXCLUDED.total_azure_pretax_cost,
     total_gcp_unblended_cost=EXCLUDED.total_gcp_unblended_cost,
     total_gcp_total=EXCLUDED.total_gcp_total,
-    total_oci_total=EXCLUDED.total_oci_total,
     total_total_infrastructure_raw_cost=EXCLUDED.total_total_infrastructure_raw_cost,
     total_total_cost_model_costs=EXCLUDED.total_total_cost_model_costs,
     total_infra_total_cost_model=EXCLUDED.total_infra_total_cost_model,
