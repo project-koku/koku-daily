@@ -5,7 +5,6 @@ SELECT
     SUM(total_azure_pretax_cost) AS total_azure_pretax_cost,
     SUM(total_gcp_unblended_cost) AS total_gcp_unblended_cost,
     SUM(total_gcp_total) AS total_gcp_total,
-    SUM(total_oci_total) AS total_oci_total,
     SUM(total_total_infrastructure_raw_cost) AS total_total_infrastructure_raw_cost,
     SUM(total_total_cost_model_costs) AS total_total_cost_model_costs,
     SUM(total_infra_total_cost_model) AS total_infra_total_cost_model,
