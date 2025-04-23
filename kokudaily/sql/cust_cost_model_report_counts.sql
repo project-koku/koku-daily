@@ -13,7 +13,7 @@ filtered_customers AS (
            c.schema_name,
            cnr.domain
     FROM   public.api_customer c
-    JOIN   cust_non_redhat AS cnr
+    LEFT JOIN   cust_non_redhat AS cnr
     ON     cnr.customer_id = c.id
     WHERE  c.org_id NOT IN ('11789772',
                             '6340056',
@@ -44,6 +44,7 @@ cte_tag_rates AS (
     FROM (
         SELECT customer, cost_model_id, cost_model_map_id, jsonb_array_elements(rates)->'tag_rates' as has_tag_rate
         FROM __cust_cost_model_report cmr
+        WHERE jsonb_typeof(rates) = 'array'
     ) as sub
     WHERE has_tag_rate IS NOT NULL
     GROUP BY customer
