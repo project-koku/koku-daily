@@ -19,6 +19,9 @@ metadata:
   name: koku-daily-on-push
 
 spec:
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-koku-daily
+
   params:
     - name: git-url
       value: '{{ source_url }}'
