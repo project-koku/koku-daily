@@ -4,6 +4,7 @@ import sys
 from kokudaily.config import Config
 from kokudaily.config import REGISTRY
 from kokudaily.reports import run_reports
+from kokudaily.send import create_zip_archive
 from kokudaily.send import email
 from kokudaily.send import prometheus
 from kokudaily.send import s3
@@ -35,7 +36,8 @@ for target, report_dict in report_data.items():
             report_files.append(path)
         prometheus(target, report_name, **report)
         s3(target, report_name, **report)
-    email(recipients, attachments=report_files, target=target)
+    zip_file_path = create_zip_archive(report_files, "koku_metrics.zip")
+    email(recipients, attachments=[zip_file_path], target=target)
     if Config.PROMETHEUS_PUSH_GATEWAY:
         push_to_gateway(
             Config.PROMETHEUS_PUSH_GATEWAY,
