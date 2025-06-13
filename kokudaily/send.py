@@ -1,6 +1,8 @@
 import logging
 import os
 import smtplib
+import tempfile
+import zipfile
 from datetime import date
 from email.encoders import encode_base64
 from email.mime.base import MIMEBase
@@ -141,3 +143,32 @@ def s3(target, report_name, **report):
         object_name=metric_file_name,
         file_path=tempfile,
     )
+
+
+def create_zip_archive(files_to_zip, zip_filename):
+    """
+    Creates a compressed zip archive from a list of files.
+
+    Args:
+        files_to_zip (list): A list of full paths to the files to be included.
+        zip_filename (str): Name for the output zip file "metrics_report.zip".
+
+    Returns:
+        str: The full path to the newly created zip archive, or None if error occurs.  # noqa
+    """
+    if not files_to_zip:
+        LOG.warning("No files provided to zip.")
+        return None
+    try:
+        zip_filepath = os.path.join(tempfile.gettempdir(), zip_filename)
+        LOG.info(f"Creating zip archive at: {zip_filepath}")
+        with zipfile.ZipFile(zip_filepath, "w", zipfile.ZIP_DEFLATED) as zipf:
+            for file_path in files_to_zip:
+                # Use os.path.basename to avoid full directory structure in the zip  # noqa
+                csv_name = os.path.basename(file_path)
+                zipf.write(file_path, csv_name)
+                LOG.info(f"Added {csv_name} to zip.")
+        return zip_filepath
+    except Exception as e:
+        LOG.error(f"Failed to create zip archive: {e}")
+        return None
