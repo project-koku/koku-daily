@@ -37,7 +37,14 @@ for target, report_dict in report_data.items():
         prometheus(target, report_name, **report)
         s3(target, report_name, **report)
     zip_file_path = create_zip_archive(report_files, "koku_metrics.zip")
-    email(recipients, attachments=[zip_file_path], target=target)
+    if zip_file_path:
+        LOG.info("Proceeding to email the compressed zip file.")
+        email(recipients, attachments=[zip_file_path], target=target)
+    else:
+        LOG.error(
+            "Skipping email because the zip archive could not be created."
+        )
+
     if Config.PROMETHEUS_PUSH_GATEWAY:
         push_to_gateway(
             Config.PROMETHEUS_PUSH_GATEWAY,

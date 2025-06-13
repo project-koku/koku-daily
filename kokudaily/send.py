@@ -1,6 +1,7 @@
 import logging
 import os
 import smtplib
+import tempfile
 import zipfile
 from datetime import date
 from email.encoders import encode_base64
@@ -159,7 +160,7 @@ def create_zip_archive(files_to_zip, zip_filename):
         LOG.warning("No files provided to zip.")
         return None
     try:
-        zip_filepath = os.path.join("/tmp", zip_filename)
+        zip_filepath = os.path.join(tempfile.gettempdir(), zip_filename)
         LOG.info(f"Creating zip archive at: {zip_filepath}")
         with zipfile.ZipFile(zip_filepath, "w", zipfile.ZIP_DEFLATED) as zipf:
             for file_path in files_to_zip:
