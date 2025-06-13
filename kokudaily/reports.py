@@ -418,6 +418,7 @@ def run_reports(filter_target=None):
                         LOG.info(f"    Executing setup task {task_file}...")
                         task_sql = _read_sql(task_file)
                         con.execute(task_sql, task_parameters)
+                        con.commit()
                     task["status"] = "complete"
 
         for report_name, report_sql_obj in REPORTS.items():
@@ -430,6 +431,7 @@ def run_reports(filter_target=None):
                 report_sql = _read_sql(report_sql_file)
                 report_sql_params = report_sql_obj.get("sql_parameters")
                 rs = con.execute(report_sql, report_sql_params)
+                con.commit()
                 keys = rs.keys()
                 data = []
                 data_dicts = []
@@ -460,6 +462,7 @@ def run_reports(filter_target=None):
                     LOG.info(f"    Executing teardown task {task_file}...")
                     task_sql = _read_sql(task_file)
                     con.execute(task_sql)
+                    con.commit()
                 task["status"] = "complete"
 
     return report_data
