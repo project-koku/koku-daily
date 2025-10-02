@@ -66,7 +66,7 @@ node_info as (
     SELECT
         ron.node AS node,
         ron.node_role AS node_role,
-        ron.architecture AS architecture,
+        COALESCE(NULLIF(ron.architecture, ''''), ''unknown'') AS architecture,
         max(ropsbn.node_capacity_cpu_cores) AS node_capacity_cpu_cores,
         max(ropsbn.node_capacity_memory_gigabytes) AS node_capacity_memory_gigabytes,
         usage_start
@@ -111,7 +111,7 @@ compute AS (
         usage_start AS "date",
         ropsbn.cluster_id,
         count(distinct node) AS nodes,
-        ron.architecture,
+        COALESCE(NULLIF(ron.architecture, ''''), ''unknown'') AS architecture,
         max(cluster_capacity_cpu_core_hours)/24 AS "clus_cap_cores",
         max(cluster_capacity_cpu_core_hours) AS "clus_cap_core_hours",
         max(cluster_capacity_memory_gigabyte_hours)/24 AS "clus_cap_mem",
