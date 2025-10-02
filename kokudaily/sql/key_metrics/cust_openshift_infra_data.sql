@@ -3,6 +3,7 @@ SELECT
     to_char(DATE_TRUNC('month', date), 'YYYY-MM') AS month,
     MAX(cluster_count) AS total_cluster_count,
     MAX(node_count) AS total_node_count,
+    architecture AS node_architecture,
     MAX(infra_node_count) AS total_infra_node_count,
     MAX(control_plane_node_count) AS total_control_plane_node_count,
     MAX(worker_node_count) AS total_worker_node_count,
@@ -22,6 +23,6 @@ SELECT
     MAX(pvc_capacity_gb) AS total_pvc_capacity_gb,
     SUM(pvc_capacity_gb_mo) AS total_pvc_capacity_gb_mo
 FROM __cust_openshift_infra_report
-GROUP BY schema, DATE_TRUNC('month', date)
-ORDER BY schema, DATE_TRUNC('month', date)
+GROUP BY schema, DATE_TRUNC('month', date), architecture
+ORDER BY schema, DATE_TRUNC('month', date), architecture
 ;

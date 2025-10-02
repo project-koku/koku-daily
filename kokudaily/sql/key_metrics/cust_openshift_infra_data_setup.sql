@@ -6,6 +6,7 @@ CREATE TEMPORARY TABLE IF NOT EXISTS __cust_openshift_infra_report (
     date date,
     cluster_count integer,
     node_count integer,
+    architecture text,
     infra_node_count integer,
     control_plane_node_count integer,
     worker_node_count integer,
@@ -36,6 +37,7 @@ INSERT INTO __cust_openshift_infra_report (
     date,
     cluster_count,
     node_count,
+    architecture,
     infra_node_count,
     control_plane_node_count,
     worker_node_count,
@@ -64,6 +66,7 @@ node_info as (
     SELECT
         ron.node AS node,
         ron.node_role AS node_role,
+        COALESCE(NULLIF(ron.architecture, ''''), ''unknown'') AS architecture,
         max(ropsbn.node_capacity_cpu_cores) AS node_capacity_cpu_cores,
         max(ropsbn.node_capacity_memory_gigabytes) AS node_capacity_memory_gigabytes,
         usage_start
@@ -72,22 +75,24 @@ node_info as (
     WHERE
         usage_start >= ''%2$s''::date
         AND usage_start < ''%3$s''::date
-    GROUP BY ron.node, ron.node_role, usage_start
+    GROUP BY ron.node, ron.node_role, ron.architecture, usage_start
     ORDER BY node_role, usage_start
 ),
 node_agg as(
     SELECT
         node_role,
+        architecture,
         count(node_role) as role_count,
         sum(node_capacity_cpu_cores) as node_cpu_cores,
         sum(node_capacity_memory_gigabytes) as node_mem_gb,
         usage_start
     FROM node_info
-    GROUP BY node_role, usage_start
+    GROUP BY node_role, architecture, usage_start
 ),
 node_counts AS (
     SELECT
         ''%1$s'' AS "customer",
+        architecture,
         SUM(CASE WHEN node_role = ''infra'' THEN role_count END) as "infra_node_count",
         SUM(CASE WHEN node_role IN (''master'', ''control-plane'') THEN role_count END) as "control_plane_node_count",
         SUM(CASE WHEN node_role = ''worker'' THEN role_count END) as "worker_node_count",
@@ -98,27 +103,30 @@ node_counts AS (
         SUM(CASE WHEN node_role IN (''master'', ''control-plane'') THEN node_mem_gb END) as "control_plane_node_mem_gb",
         SUM(CASE WHEN node_role = ''worker'' THEN node_mem_gb END) as "worker_node_mem_gb",
         usage_start AS "date"
-    FROM node_agg GROUP BY usage_start
+    FROM node_agg GROUP BY architecture, usage_start
 ),
 compute AS (
     SELECT
         ''%1$s'' AS "customer",
         usage_start AS "date",
-        cluster_id,
+        ropsbn.cluster_id,
         count(distinct node) AS nodes,
+        COALESCE(NULLIF(ron.architecture, ''''), ''unknown'') AS architecture,
         max(cluster_capacity_cpu_core_hours)/24 AS "clus_cap_cores",
         max(cluster_capacity_cpu_core_hours) AS "clus_cap_core_hours",
         max(cluster_capacity_memory_gigabyte_hours)/24 AS "clus_cap_mem",
         max(cluster_capacity_memory_gigabyte_hours) AS "clus_cap_mem_hours"
     FROM
-        %1$s.reporting_ocp_pod_summary_by_node_p
+        %1$s.reporting_ocp_pod_summary_by_node_p ropsbn
+    JOIN %1$s.reporting_ocp_nodes ron USING (node)
     WHERE
         usage_start >= ''%2$s''::date
         AND usage_start < ''%3$s''::date
         AND cost_model_rate_type IS NULL
     GROUP BY
-        cluster_id,
-        usage_start
+        ropsbn.cluster_id,
+        usage_start,
+        architecture
 ),
 compute_agg AS (
     SELECT
@@ -126,12 +134,19 @@ compute_agg AS (
         date AS "date",
         count(distinct cluster_id) AS cluster_count,
         sum(nodes) AS node_count,
+        architecture,
         sum(clus_cap_cores) AS cluster_capacity_cores,
         sum(clus_cap_core_hours) AS cluster_capacity_core_hours,
         sum(clus_cap_mem) AS cluster_capacity_memory_gb,
         sum(clus_cap_mem_hours) AS cluster_capacity_memory_gb_hours
     FROM compute
-    GROUP BY date
+    GROUP BY date, architecture
+),
+node_compute_agg AS (
+    SELECT
+        *
+    FROM node_counts
+    JOIN compute_agg USING (customer, date, architecture)
 ),
 storage AS (
     SELECT
@@ -171,6 +186,7 @@ SELECT
     s.date,
     cluster_count,
     node_count,
+    architecture,
     infra_node_count,
     control_plane_node_count,
     worker_node_count,
@@ -191,9 +207,8 @@ SELECT
     pvc_capacity_gb_mo
 FROM
 schemas s
-FULL OUTER JOIN compute_agg ca USING (customer, date)
+FULL OUTER JOIN node_compute_agg ca USING (customer, date)
 FULL OUTER JOIN storage_agg sa USING (customer, date)
-FULL OUTER JOIN node_counts nc USING (customer, date)
 ORDER BY date
 ';
 BEGIN
