@@ -18,7 +18,7 @@ class Config:
         from app_common_python import LoadedConfig
 
         # Database
-        DB_ENGINE = os.getenv("DATABASE_ENGINE", "postgresql")
+        DB_ENGINE = os.getenv("DATABASE_ENGINE", "postgresql+psycopg2")
         DB_NAME = LoadedConfig.database.name
         DB_USER = LoadedConfig.database.username
         DB_PASSWORD = LoadedConfig.database.password
@@ -42,7 +42,7 @@ class Config:
         MINIO_BUCKET = LoadedConfig.objectStore.buckets[0].name
     else:
         # Database
-        DB_ENGINE = os.getenv("DATABASE_ENGINE", "postgresql")
+        DB_ENGINE = os.getenv("DATABASE_ENGINE", "postgresql+psycopg2")
         DB_NAME = os.getenv("DATABASE_NAME", "postgres")
         DB_USER = os.getenv("DATABASE_USER", "postgres")
         DB_PASSWORD = os.getenv("DATABASE_PASSWORD", "postgres")
@@ -55,6 +55,8 @@ class Config:
         MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", None)
         MINIO_BUCKET = os.getenv("MINIO_BUCKET", None)
 
+    # The driver is explicit: SQLAlchemy 2.1 maps a bare "postgresql://" URL to
+    # psycopg (v3), but the image only installs psycopg2.
     SQLALCHEMY_DATABASE_URI = (
         f"{DB_ENGINE}://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     )
