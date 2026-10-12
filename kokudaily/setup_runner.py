@@ -104,14 +104,35 @@ def run_per_schema_setup(
     Run TEMP table init once, then per-schema INSERT + commit (fail-fast).
 
     TEMP tables use ON COMMIT PRESERVE ROWS (default), so commits keep rows.
+
+    Captures a single ``run_cutoff`` (wall clock) before the tenant loop so
+    SQL that previously used ``now()`` inside one DO-loop transaction keeps a
+    stable date series across per-schema commits. Skips schemas that disappear
+    between listing and execution; other errors remain fail-fast.
     """
     bind = dict(params or {})
     con.execute(init_sql, bind)
     con.commit()
 
+    # Stable cutoff for generate_series / date bounds across per-schema commits
+    # (replaces transaction-scoped now() from the former DO loops).
+    if "run_cutoff" not in bind:
+        bind["run_cutoff"] = con.execute(
+            text("SELECT clock_timestamp()")
+        ).scalar()
+
     schema_list = list(schemas)
     for idx, schema_name in enumerate(schema_list, start=1):
         schema = validate_schema_name(schema_name)
+        exists = con.execute(
+            text("SELECT 1 FROM pg_namespace WHERE nspname = :n"),
+            {"n": schema},
+        ).scalar()
+        if not exists:
+            LOG.warning(
+                "Schema %s no longer in pg_namespace; skipping.", schema
+            )
+            continue
         quoted = quote_schema_ident(con, schema)
         rendered = text(
             render_schema_sql(

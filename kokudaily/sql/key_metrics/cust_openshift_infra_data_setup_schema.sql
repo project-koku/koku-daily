@@ -26,7 +26,7 @@ INSERT INTO __cust_openshift_infra_report (
 WITH schemas AS (
     SELECT
         :customer AS "customer",
-        generate_series(date_trunc('month', CAST(:start_time AS date)), now(), '1 day')::date AS "date"
+        generate_series(date_trunc('month', CAST(:start_time AS date)), CAST(:run_cutoff AS timestamptz), '1 day')::date AS "date"
 ),
 node_info as (
     SELECT
