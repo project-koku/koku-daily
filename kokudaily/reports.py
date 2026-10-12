@@ -7,6 +7,11 @@ from tempfile import gettempdir
 from dateutil.relativedelta import relativedelta
 from kokudaily.config import Config
 from kokudaily.engine import DB_ENGINE
+from kokudaily.setup_runner import TENANT_FILTER_ALL
+from kokudaily.setup_runner import TENANT_FILTER_KEY_METRICS
+from kokudaily.setup_runner import TENANT_FILTER_OCP
+from kokudaily.setup_runner import list_tenant_schemas
+from kokudaily.setup_runner import run_per_schema_setup
 from pytz import UTC
 from sqlalchemy import text
 
@@ -56,15 +61,20 @@ LAST_3_MONTH_PARAMS = {
 REQUIRES = [
     {
         # setup, teardown needed for customer-centric report(s)
+        # Per-schema setups: init_file + per_schema_file; commit after each schema.
         "setup": [
             {
-                "file": "sql/cust_cost_model_report_setup.sql",
+                "init_file": "sql/cust_cost_model_report_setup.sql",
+                "per_schema_file": "sql/cust_cost_model_report_setup_schema.sql",
+                "tenant_filter": TENANT_FILTER_ALL,
                 "status": "",
                 "frequency": "weekly",
                 "sql_parameters": {},
             },
             {
-                "file": "sql/cust_node_report_setup.sql",
+                "init_file": "sql/cust_node_report_setup.sql",
+                "per_schema_file": "sql/cust_node_report_setup_schema.sql",
+                "tenant_filter": TENANT_FILTER_OCP,
                 "status": "",
                 "frequency": "weekly",
                 "sql_parameters": USAGE_REPORT_PARAMS,
@@ -76,25 +86,39 @@ REQUIRES = [
             #     "sql_parameters": USAGE_REPORT_PARAMS,
             # },
             {
-                "file": "sql/cust_tag_report_setup.sql",
+                "init_file": "sql/cust_tag_report_setup.sql",
+                "per_schema_file": "sql/cust_tag_report_setup_schema.sql",
+                "tenant_filter": TENANT_FILTER_ALL,
                 "status": "",
                 "frequency": "daily",
                 "sql_parameters": {},
             },
             {
-                "file": "sql/key_metrics/cust_cloud_costs_data_setup.sql",
+                "init_file": "sql/key_metrics/cust_cloud_costs_data_setup.sql",
+                "per_schema_file": (
+                    "sql/key_metrics/cust_cloud_costs_data_setup_schema.sql"
+                ),
+                "tenant_filter": TENANT_FILTER_KEY_METRICS,
                 "status": "",
                 "frequency": "daily",
                 "sql_parameters": LAST_3_MONTH_PARAMS,
             },
             {
-                "file": "sql/key_metrics/cust_openshift_costs_data_setup.sql",
+                "init_file": "sql/key_metrics/cust_openshift_costs_data_setup.sql",
+                "per_schema_file": (
+                    "sql/key_metrics/cust_openshift_costs_data_setup_schema.sql"
+                ),
+                "tenant_filter": TENANT_FILTER_KEY_METRICS,
                 "status": "",
                 "frequency": "daily",
                 "sql_parameters": LAST_3_MONTH_PARAMS,
             },
             {
-                "file": "sql/key_metrics/cust_openshift_infra_data_setup.sql",
+                "init_file": "sql/key_metrics/cust_openshift_infra_data_setup.sql",
+                "per_schema_file": (
+                    "sql/key_metrics/cust_openshift_infra_data_setup_schema.sql"
+                ),
+                "tenant_filter": TENANT_FILTER_KEY_METRICS,
                 "status": "",
                 "frequency": "daily",
                 "sql_parameters": LAST_3_MONTH_PARAMS,
@@ -373,14 +397,55 @@ REPORTS = {
 }
 
 
-def _read_sql(filename):
-    """Read SQL data from file."""
-    data = None
+def _read_sql_text(filename):
+    """Read SQL file contents as a string (or None if missing)."""
     data_file = os.path.join(os.path.dirname(__file__), filename)
     if os.path.exists(data_file) and os.path.isfile(data_file):
         with open(data_file) as file:
-            data = file.read()
-    return text(data)
+            return file.read()
+    return None
+
+
+def _read_sql(filename):
+    """Read SQL data from file as a SQLAlchemy text clause."""
+    data = _read_sql_text(filename)
+    return text(data) if data is not None else None
+
+
+def _run_setup_task(con, task):
+    """Execute one setup task (legacy single-file or per-schema)."""
+    task_parameters = task.get("sql_parameters") or {}
+    per_schema_file = task.get("per_schema_file")
+    init_file = task.get("init_file")
+    task_file = task.get("file")
+
+    if per_schema_file and init_file:
+        LOG.info(
+            "    Executing per-schema setup %s + %s...",
+            init_file,
+            per_schema_file,
+        )
+        init_sql = _read_sql(init_file)
+        per_schema_sql = _read_sql_text(per_schema_file)
+        if init_sql is None or per_schema_sql is None:
+            raise FileNotFoundError(
+                f"Missing setup SQL: {init_file} / {per_schema_file}"
+            )
+        schemas = list_tenant_schemas(
+            con,
+            tenant_filter=task.get("tenant_filter", TENANT_FILTER_ALL),
+            provider_types=task_parameters.get("provider_types"),
+        )
+        run_per_schema_setup(
+            con, init_sql, per_schema_sql, schemas, task_parameters
+        )
+        return
+
+    if task_file:
+        LOG.info(f"    Executing setup task {task_file}...")
+        task_sql = _read_sql(task_file)
+        con.execute(task_sql, task_parameters)
+        con.commit()
 
 
 def run_reports(filter_target=None):
@@ -412,13 +477,7 @@ def run_reports(filter_target=None):
                     # We only run this task once a day, skip setup.
                     continue
                 if task["status"] != "complete":
-                    task_file = task["file"]
-                    task_parameters = task.get("sql_parameters")
-                    if task_file:
-                        LOG.info(f"    Executing setup task {task_file}...")
-                        task_sql = _read_sql(task_file)
-                        con.execute(task_sql, task_parameters)
-                        con.commit()
+                    _run_setup_task(con, task)
                     task["status"] = "complete"
 
         for report_name, report_sql_obj in REPORTS.items():
