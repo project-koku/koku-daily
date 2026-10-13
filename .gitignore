@@ -132,3 +132,9 @@ openshift/parameters.properties
 
 .vscode/
 *.sw[po]
+
+# Cursor — share rules/commands/skills if added; keep agents + tasks local
+.cursor/*
+!.cursor/rules/
+!.cursor/commands/
+!.cursor/skills/
