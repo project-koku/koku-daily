@@ -8,6 +8,7 @@ from typing import Iterable
 from typing import Optional
 from typing import Sequence
 
+from sqlalchemy import bindparam
 from sqlalchemy import text
 
 LOG = logging.getLogger(__name__)
@@ -15,7 +16,7 @@ LOG = logging.getLogger(__name__)
 SCHEMA_NAME_RE = re.compile(r"^(?:acct|org)[0-9A-Za-z_]+$")
 
 # Hard-coded exclusions preserved from key_metrics setup SQL.
-KEY_METRICS_EXCLUDE_SQL = "('acct6193296', 'acct6089719')"
+KEY_METRICS_EXCLUDE_SCHEMAS = ("acct6193296", "acct6089719")
 
 TENANT_FILTER_ALL = "all"
 TENANT_FILTER_OCP = "ocp"
@@ -29,25 +30,10 @@ def validate_schema_name(schema_name: str) -> str:
     return schema_name
 
 
-def quote_schema_ident(con, schema_name: str) -> str:
-    """Validate schema_name then quote it via PostgreSQL quote_ident."""
+def render_schema_sql(sql_template: str, schema_name: str) -> str:
+    """Substitute {schema} after validating the name is a safe identifier."""
     schema = validate_schema_name(schema_name)
-    return con.execute(text("SELECT quote_ident(:n)"), {"n": schema}).scalar()
-
-
-def render_schema_sql(
-    sql_template: str,
-    schema_name: str,
-    quoted_ident: Optional[str] = None,
-) -> str:
-    """
-    Substitute {schema} identifier placeholders after validation.
-
-    Prefer passing quoted_ident from quote_schema_ident(con, …) at execute time.
-    """
-    schema = validate_schema_name(schema_name)
-    ident = quoted_ident if quoted_ident is not None else schema
-    return sql_template.replace("{schema}", ident)
+    return sql_template.replace("{schema}", schema)
 
 
 def list_tenant_schemas(
@@ -79,13 +65,21 @@ def list_tenant_schemas(
         WHERE  (t.schema_name ~ '^acct' OR t.schema_name ~ '^org')
     """
     if tenant_filter == TENANT_FILTER_KEY_METRICS:
-        sql += f"""
-        AND t.schema_name NOT IN {KEY_METRICS_EXCLUDE_SQL}
+        sql += """
+        AND t.schema_name NOT IN :exclude_schemas
         """
+        params["exclude_schemas"] = list(KEY_METRICS_EXCLUDE_SCHEMAS)
 
     sql += " ORDER BY t.schema_name"
 
-    rows = con.execute(text(sql), params)
+    if tenant_filter == TENANT_FILTER_KEY_METRICS:
+        stmt = text(sql).bindparams(
+            bindparam("exclude_schemas", expanding=True)
+        )
+    else:
+        stmt = text(sql)
+
+    rows = con.execute(stmt, params)
     schemas = [validate_schema_name(row[0]) for row in rows]
     LOG.info(
         "Listed %s tenant schemas (filter=%s)", len(schemas), tenant_filter
@@ -133,12 +127,7 @@ def run_per_schema_setup(
                 "Schema %s no longer in pg_namespace; skipping.", schema
             )
             continue
-        quoted = quote_schema_ident(con, schema)
-        rendered = text(
-            render_schema_sql(
-                per_schema_sql_template, schema, quoted_ident=quoted
-            )
-        )
+        rendered = text(render_schema_sql(per_schema_sql_template, schema))
         schema_bind = dict(bind)
         schema_bind["customer"] = schema
         LOG.info(
