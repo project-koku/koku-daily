@@ -3,16 +3,15 @@
 import unittest
 from unittest import mock
 
-from sqlalchemy import text
-
 from kokudaily.setup_runner import KEY_METRICS_EXCLUDE_SCHEMAS
-from kokudaily.setup_runner import TENANT_FILTER_ALL
-from kokudaily.setup_runner import TENANT_FILTER_KEY_METRICS
-from kokudaily.setup_runner import TENANT_FILTER_OCP
 from kokudaily.setup_runner import list_tenant_schemas
 from kokudaily.setup_runner import render_schema_sql
 from kokudaily.setup_runner import run_per_schema_setup
+from kokudaily.setup_runner import TENANT_FILTER_ALL
+from kokudaily.setup_runner import TENANT_FILTER_KEY_METRICS
+from kokudaily.setup_runner import TENANT_FILTER_OCP
 from kokudaily.setup_runner import validate_schema_name
+from sqlalchemy import text
 
 
 class FakeResult:

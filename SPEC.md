@@ -183,3 +183,25 @@ Status: awaiting human approval; no implementation changes made.
 
 - Initial draft: includes the user's requirement for both connections and RO
   computation, plus recovery conflict isolation and persisted-history parity.
+- Approval: the user approved this contract with "go ahead" on 2026-10-15.
+  This supersedes the initial draft status at the top of the file.
+- Setup record (acceptance criteria unchanged): added `tools/bootstrap.py`,
+  `tools/gauntlet.py`, `tools/memory_probe.py`, `tools/run_local_reports.py`,
+  `tools/dependency_audit.py`, `tools/negative_controls.py`,
+  `tools/reorder_imports.py`, `tests/test_replica.py`,
+  `tests/test_checker_contracts.py`, `.flake8`, and `requirements-dev.lock`
+  to make the approved checks executable and reproducible. The old SQL lives
+  unchanged under the approved legacy fixture directory.
+- Toolchain repair: the repository's flake8 hook referred to a repository that
+  no longer provides that hook; it now uses the existing linter's official
+  repository. An adapter reconciles the import sorter's module-docstring spacing
+  with Black while retaining both checks. Black's slice spacing is exempt from
+  flake8 E203. Checker controls test the adapter and failure guards.
+- Toolchain audit: isolated development versions of pytest, pip, and setuptools
+  were advanced to advisory-fixed releases. pip and setuptools are pinned as
+  environment tooling, not runtime dependencies. The production Pipfile.lock is
+  unchanged; `requirements-dev.lock` records every installed development version.
+- Memory assurance clarification: the scaled probe measures Python intermediate
+  retention and JSON serialization on the local host. Driver buffers, final
+  output copies, PostgreSQL memory, and production tenant sizes are outside that
+  measurement; it is not evidence of a production 2 GiB upper bound.

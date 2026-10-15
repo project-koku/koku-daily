@@ -1,4 +1,5 @@
 """SQLAlchemy database engine creation."""
+
 import os
 
 import sqlalchemy
@@ -50,11 +51,16 @@ def create_engine(readonly=False):
     url = Config.SQLALCHEMY_DATABASE_URI
     if readonly:
         if not Config.RO_DB_HOST:
-            raise ValueError("DATABASE_RO_HOST is required; RW fallback is forbidden")
+            raise ValueError(
+                "DATABASE_RO_HOST is required; RW fallback is forbidden"
+            )
         url = sqlalchemy.engine.URL.create(
-            Config.DB_ENGINE, username=Config.RO_DB_USER,
-            password=Config.RO_DB_PASSWORD, host=Config.RO_DB_HOST,
-            port=int(Config.RO_DB_PORT), database=Config.RO_DB_NAME,
+            Config.DB_ENGINE,
+            username=Config.RO_DB_USER,
+            password=Config.RO_DB_PASSWORD,
+            host=Config.RO_DB_HOST,
+            port=int(Config.RO_DB_PORT),
+            database=Config.RO_DB_NAME,
         )
     return sqlalchemy.create_engine(url, hide_parameters=True, **kwargs)
 

@@ -1,4 +1,5 @@
 """Configuration loader for application."""
+
 import json
 import logging
 import math
@@ -67,8 +68,12 @@ class Config:
     # The driver is explicit: SQLAlchemy 2.1 maps a bare "postgresql://" URL to
     # psycopg (v3), but the image only installs psycopg2.
     SQLALCHEMY_DATABASE_URI = URL.create(
-        DB_ENGINE, username=DB_USER, password=DB_PASSWORD, host=DB_HOST,
-        port=int(DB_PORT), database=DB_NAME,
+        DB_ENGINE,
+        username=DB_USER,
+        password=DB_PASSWORD,
+        host=DB_HOST,
+        port=int(DB_PORT),
+        database=DB_NAME,
     )
 
     # app-common-python's database config exposes the primary only. Never
@@ -83,7 +88,9 @@ class Config:
     if REPLICA_RETRY_DELAY < 0 or not math.isfinite(REPLICA_RETRY_DELAY):
         raise ValueError("REPLICA_RETRY_DELAY must be finite and nonnegative")
     REPORT_WRITE_BATCH_SIZE = positive_setting("REPORT_WRITE_BATCH_SIZE", 100)
-    REPORT_STATEMENT_TIMEOUT_MS = positive_setting("REPORT_STATEMENT_TIMEOUT_MS", 5000)
+    REPORT_STATEMENT_TIMEOUT_MS = positive_setting(
+        "REPORT_STATEMENT_TIMEOUT_MS", 5000
+    )
     REPORT_LOCK_TIMEOUT_MS = positive_setting("REPORT_LOCK_TIMEOUT_MS", 1000)
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -123,7 +130,9 @@ class Config:
     # S3 configuration
     WAREHOUSE_PATH = os.getenv("WAREHOUSE_PATH", "metrics")
 
-    WEEKLY_REPORT_SCHEDULED_DAY: str | int | None = os.getenv("WEEKLY_REPORT_SCHEDULED_DAY")
+    WEEKLY_REPORT_SCHEDULED_DAY: str | int | None = os.getenv(
+        "WEEKLY_REPORT_SCHEDULED_DAY"
+    )
     if WEEKLY_REPORT_SCHEDULED_DAY:
         try:
             WEEKLY_REPORT_SCHEDULED_DAY = int(WEEKLY_REPORT_SCHEDULED_DAY)
@@ -134,7 +143,10 @@ class Config:
             )
             WEEKLY_REPORT_SCHEDULED_DAY = None
     RUN_DAILY_REPORTS: str | bool = os.getenv("RUN_DAILY_REPORTS", "")
-    if isinstance(RUN_DAILY_REPORTS, str) and RUN_DAILY_REPORTS.lower() == "true":
+    if (
+        isinstance(RUN_DAILY_REPORTS, str)
+        and RUN_DAILY_REPORTS.lower() == "true"
+    ):
         RUN_DAILY_REPORTS = True
     else:
         RUN_DAILY_REPORTS = False

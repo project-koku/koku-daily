@@ -1,0 +1,3 @@
+[flake8]
+# Black uses whitespace around complex slice bounds (PEP 8 compliant).
+extend-ignore = E203

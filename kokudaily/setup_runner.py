@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import re
 from typing import Iterable
-from typing import Optional
 from typing import Sequence
 
 from sqlalchemy import bindparam
@@ -39,7 +38,7 @@ def render_schema_sql(sql_template: str, schema_name: str) -> str:
 def list_tenant_schemas(
     con,
     tenant_filter: str = TENANT_FILTER_ALL,
-    provider_types: Optional[Sequence[str]] = None,
+    provider_types: Sequence[str] | None = None,
 ) -> list[str]:
     """List tenant schemas using the same filters as the former DO loops."""
     params: dict = {}
@@ -92,7 +91,7 @@ def run_per_schema_setup(
     init_sql,
     per_schema_sql_template: str,
     schemas: Iterable[str],
-    params: Optional[dict] = None,
+    params: dict | None = None,
 ) -> None:
     """
     Run TEMP table init once, then per-schema INSERT + commit (fail-fast).

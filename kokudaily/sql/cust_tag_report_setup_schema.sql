@@ -24,7 +24,7 @@ with cte_openshift_label_count AS (
   cross join cte_aws_tag_count as aws
   cross join cte_azure_tag_count as azure
   cross join cte_gcp_label_count as gcp
-  
+
 )
 SELECT
     CAST(customer AS text) AS customer,
