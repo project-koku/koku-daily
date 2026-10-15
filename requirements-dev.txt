@@ -1,0 +1,7 @@
+pytest==8.4.2
+coverage==7.14.1
+diff-cover==9.7.1
+mypy==1.18.2
+hypothesis==6.140.3
+pytest-randomly==4.0.1
+pre-commit==4.6.0

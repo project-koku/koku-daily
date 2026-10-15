@@ -61,3 +61,8 @@ _Note:_ Delete OpenShift resources with the following command:
 ```
 oc process --param-file openshift/parameters.properties  -f openshift/ |  oc delete -f -
 ```
+
+## Read replica reporting
+
+Reports require an explicit `DATABASE_RO_HOST` and use the primary only for
+final daily totals upserts. See [connection setup, retries, and local validation](docs/read-replica-reporting.md).

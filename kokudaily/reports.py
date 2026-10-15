@@ -7,11 +7,14 @@ from tempfile import gettempdir
 from dateutil.relativedelta import relativedelta
 from kokudaily.config import Config
 from kokudaily.engine import DB_ENGINE
+from kokudaily.engine import create_engine
+from kokudaily.datasets import DEFINITIONS
+from kokudaily.datasets import SETUP_TABLES
+from kokudaily.replica import bind_datasets, read_rows, read_schema, merge_history, write_totals
 from kokudaily.setup_runner import TENANT_FILTER_ALL
 from kokudaily.setup_runner import TENANT_FILTER_KEY_METRICS
 from kokudaily.setup_runner import TENANT_FILTER_OCP
 from kokudaily.setup_runner import list_tenant_schemas
-from kokudaily.setup_runner import run_per_schema_setup
 from pytz import UTC
 from sqlalchemy import text
 
@@ -406,122 +409,108 @@ def _read_sql_text(filename):
     return None
 
 
-def _read_sql(filename):
-    """Read SQL data from file as a SQLAlchemy text clause."""
-    data = _read_sql_text(filename)
-    return text(data) if data is not None else None
+def _required_sql(filename):
+    sql = _read_sql_text(filename)
+    if sql is None:
+        raise FileNotFoundError(f"Missing report SQL: {filename}")
+    return sql
 
 
-def _run_setup_task(con, task):
-    """Execute one setup task (legacy single-file or per-schema)."""
-    task_parameters = task.get("sql_parameters") or {}
-    per_schema_file = task.get("per_schema_file")
-    init_file = task.get("init_file")
-    task_file = task.get("file")
-
-    if per_schema_file and init_file:
-        LOG.info(
-            "    Executing per-schema setup %s + %s...",
-            init_file,
-            per_schema_file,
-        )
-        init_sql = _read_sql(init_file)
-        per_schema_sql = _read_sql_text(per_schema_file)
-        if init_sql is None or per_schema_sql is None:
-            raise FileNotFoundError(
-                f"Missing setup SQL: {init_file} / {per_schema_file}"
+def _run_setup_task(reader, task, cutoff):
+    """Collect one report's inputs with a separate RO transaction per schema."""
+    parameters = dict(task.get("sql_parameters") or {})
+    parameters["run_cutoff"] = cutoff
+    with reader.connect() as con:
+        with con.begin():
+            con.execute(text("SET TRANSACTION READ ONLY"))
+            schemas = list_tenant_schemas(
+                con, task.get("tenant_filter", TENANT_FILTER_ALL),
+                parameters.get("provider_types"),
             )
-        schemas = list_tenant_schemas(
-            con,
-            tenant_filter=task.get("tenant_filter", TENANT_FILTER_ALL),
-            provider_types=task_parameters.get("provider_types"),
+    sql = _required_sql(task["per_schema_file"])
+    # These names come from the checked-in task descriptors, never user input.
+    table = SETUP_TABLES[task["per_schema_file"]]
+    rows = []
+    complete = True
+    for schema in schemas:
+        result = read_schema(
+            reader, sql, schema, dict(parameters, customer=schema),
+            attempts=Config.REPLICA_RETRY_ATTEMPTS,
+            delay=Config.REPLICA_RETRY_DELAY, check_exists=True,
         )
-        run_per_schema_setup(
-            con, init_sql, per_schema_sql, schemas, task_parameters
-        )
-        return
+        rows.extend(result.rows)
+        complete = complete and result.complete
+    return table, rows, complete
 
-    if task_file:
-        LOG.info(f"    Executing setup task {task_file}...")
-        task_sql = _read_sql(task_file)
-        con.execute(task_sql, task_parameters)
-        con.commit()
+
+def _collect_datasets(reader, run_weeklys):
+    datasets = {}
+    complete = True
+    cutoff = None
+    for require in REQUIRES:
+        for task in require["setup"]:
+            if task["frequency"] == "weekly" and not run_weeklys:
+                continue
+            if task["frequency"] == "daily" and not Config.RUN_DAILY_REPORTS:
+                continue
+            if task.get("per_schema_file"):
+                if cutoff is None:
+                    cutoff = read_rows(reader, "SELECT clock_timestamp() AS cutoff").rows[0]["cutoff"]
+                table, rows, succeeded = _run_setup_task(reader, task, cutoff)
+                datasets[table] = rows
+                complete = complete and succeeded
+            else:
+                sql, params = bind_datasets(_required_sql(task["file"]), datasets, DEFINITIONS)
+                current = read_rows(reader, sql, params).rows
+                if complete:
+                    write_totals(
+                        DB_ENGINE, _required_sql("sql/key_metrics/cust_total_data_upsert.sql"),
+                        current, Config.REPORT_WRITE_BATCH_SIZE,
+                        Config.REPORT_STATEMENT_TIMEOUT_MS, Config.REPORT_LOCK_TIMEOUT_MS,
+                    )
+                else:
+                    LOG.error("Reports incomplete: suppressing daily totals persistence")
+                history = read_rows(reader, "SELECT * FROM public.__customer_total_data").rows
+                datasets["__customer_total_data"] = merge_history(history, current)
+    return datasets
+
+
+def _save_report(report_name, result, temp_dir):
+    path = os.path.join(temp_dir, f"{report_name}.csv")
+    data = [tuple(row[key] for key in result.columns) for row in result.rows]
+    with open(path, "w", newline="") as csv_file:
+        writer = csv.writer(csv_file)
+        writer.writerow(result.columns)
+        writer.writerows(data)
+    return {"data": data, "columns": result.columns, "file": path,
+            "data_dicts": result.rows}
 
 
 def run_reports(filter_target=None):
-    """Run the reports."""
+    """Compute reports on RO; acquire RW only for final daily upserts."""
     today = datetime.datetime.now(datetime.timezone.utc)
     run_weeklys = Config.WEEKLY_REPORT_SCHEDULED_DAY == today.weekday()
+    selected = dict(REPORTS)
     if run_weeklys:
-        REPORTS.update(WEEKLY_REPORTS)
+        selected.update(WEEKLY_REPORTS)
     if Config.RUN_DAILY_REPORTS:
-        REPORTS.update(DAILY_REPORTS)
-    db = DB_ENGINE
-    report_data = {}
-    tmp = gettempdir()
-    temp_dir = os.path.join(tmp, "reports")
-    os.makedirs(temp_dir, exist_ok=True)
-    with db.connect() as con:
-
-        # Do any setup needed
-        LOG.info("Running setup...")
-        for require in REQUIRES:
-            for task in require["setup"]:
-                if task["frequency"] == "weekly" and not run_weeklys:
-                    # We only run this task once a week, skip setup.
-                    continue
-                if (
-                    task["frequency"] == "daily"
-                    and not Config.RUN_DAILY_REPORTS
-                ):
-                    # We only run this task once a day, skip setup.
-                    continue
-                if task["status"] != "complete":
-                    _run_setup_task(con, task)
-                    task["status"] = "complete"
-
-        for report_name, report_sql_obj in REPORTS.items():
-            namespace = report_sql_obj.get("namespace", Config.NAMESPACE)
-            target = report_sql_obj.get("target", Config.NAMESPACE)
-            report_sql_file = report_sql_obj.get("file")
-            valid_target = (not filter_target) or target == filter_target
-            if namespace == Config.NAMESPACE and valid_target:
-                LOG.info(f"report_sql_file={report_sql_file}.")
-                report_sql = _read_sql(report_sql_file)
-                report_sql_params = report_sql_obj.get("sql_parameters")
-                rs = con.execute(report_sql, report_sql_params)
-                con.commit()
-                keys = rs.keys()
-                data = []
-                data_dicts = []
-                tempfile = os.path.join(temp_dir, f"{report_name}.csv")
-                LOG.debug(tempfile)
-                with open(tempfile, "w", newline="") as csv_file:
-                    writer = csv.writer(csv_file)
-                    writer.writerow(keys)
-                    for row in rs:
-                        writer.writerow(row)
-                        data.append(row)
-                        data_dicts.append(row._asdict())
-                target_obj = report_data.get(target, {})
-                target_obj[report_name] = {
-                    "data": data,
-                    "columns": keys,
-                    "file": tempfile,
-                    "data_dicts": data_dicts,
-                }
-                report_data[target] = target_obj
-
-        # tear down any setups
-        LOG.info("Running teardown...")
-        for require in REQUIRES:
-            for task in require["teardown"]:
-                task_file = task["file"]
-                if task_file:
-                    LOG.info(f"    Executing teardown task {task_file}...")
-                    task_sql = _read_sql(task_file)
-                    con.execute(task_sql)
-                    con.commit()
-                task["status"] = "complete"
-
-    return report_data
+        selected.update(DAILY_REPORTS)
+    reader = create_engine(readonly=True)
+    try:
+        datasets = _collect_datasets(reader, run_weeklys)
+        report_data = {}
+        temp_dir = os.path.join(gettempdir(), "reports")
+        os.makedirs(temp_dir, exist_ok=True)
+        for report_name, report in selected.items():
+            namespace = report.get("namespace", Config.NAMESPACE)
+            target = report.get("target", Config.NAMESPACE)
+            if namespace != Config.NAMESPACE or (filter_target and target != filter_target):
+                continue
+            sql, binds = bind_datasets(_required_sql(report["file"]), datasets, DEFINITIONS)
+            parameters = dict(report.get("sql_parameters") or {})
+            parameters.update(binds)
+            result = read_rows(reader, sql, parameters)
+            report_data.setdefault(target, {})[report_name] = _save_report(report_name, result, temp_dir)
+        return report_data
+    finally:
+        reader.dispose()

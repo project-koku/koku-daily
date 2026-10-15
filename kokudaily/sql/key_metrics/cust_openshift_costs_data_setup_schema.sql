@@ -1,17 +1,4 @@
-INSERT INTO __cust_openshift_cost_report (
-    schema,
-    date,
-    total_infrastructure_raw_cost,
-    total_cost_model_costs,
-    infra_total_cost_model,
-    infra_cost_model_cpu_cost,
-    infra_cost_model_memory_cost,
-    infra_cost_model_volume_cost,
-    sup_total_cost_model,
-    sup_cost_model_cpu_cost,
-    sup_cost_model_memory_cost,
-    sup_cost_model_volume_cost
-)
+WITH schema_rows (schema, date, total_infrastructure_raw_cost, total_cost_model_costs, infra_total_cost_model, infra_cost_model_cpu_cost, infra_cost_model_memory_cost, infra_cost_model_volume_cost, sup_total_cost_model, sup_cost_model_cpu_cost, sup_cost_model_memory_cost, sup_cost_model_volume_cost) AS (
 WITH schemas AS (
     SELECT
         :customer AS "customer",
@@ -122,4 +109,19 @@ FROM
     FULL OUTER JOIN infra_raw ir USING (customer, date)
     FULL OUTER JOIN sup_costs sc USING (customer, date)
 ORDER BY date
-;
+
+)
+SELECT
+    CAST(schema AS text) AS schema,
+    CAST(date AS date) AS date,
+    CAST(total_infrastructure_raw_cost AS numeric(33, 2)) AS total_infrastructure_raw_cost,
+    CAST(total_cost_model_costs AS numeric(33, 2)) AS total_cost_model_costs,
+    CAST(infra_total_cost_model AS numeric(33, 2)) AS infra_total_cost_model,
+    CAST(infra_cost_model_cpu_cost AS numeric(33, 2)) AS infra_cost_model_cpu_cost,
+    CAST(infra_cost_model_memory_cost AS numeric(33, 2)) AS infra_cost_model_memory_cost,
+    CAST(infra_cost_model_volume_cost AS numeric(33, 2)) AS infra_cost_model_volume_cost,
+    CAST(sup_total_cost_model AS numeric(33, 2)) AS sup_total_cost_model,
+    CAST(sup_cost_model_cpu_cost AS numeric(33, 2)) AS sup_cost_model_cpu_cost,
+    CAST(sup_cost_model_memory_cost AS numeric(33, 2)) AS sup_cost_model_memory_cost,
+    CAST(sup_cost_model_volume_cost AS numeric(33, 2)) AS sup_cost_model_volume_cost
+FROM schema_rows;

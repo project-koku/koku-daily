@@ -1,28 +1,4 @@
-INSERT INTO __cust_openshift_infra_report (
-    schema,
-    date,
-    cluster_count,
-    node_count,
-    architecture,
-    infra_node_count,
-    control_plane_node_count,
-    worker_node_count,
-    infra_node_cpu_cores,
-    control_plane_node_cpu_cores,
-    worker_node_cpu_cores,
-    infra_node_mem_gb,
-    control_plane_node_mem_gb,
-    worker_node_mem_gb,
-    pvc_count,
-    cluster_capacity_cores,
-    cluster_capacity_core_hours,
-    cluster_capacity_memory_gb,
-    cluster_capacity_memory_gb_hours,
-    volume_request_gb,
-    volume_request_gb_mo,
-    pvc_capacity_gb,
-    pvc_capacity_gb_mo
-)
+WITH schema_rows (schema, date, cluster_count, node_count, architecture, infra_node_count, control_plane_node_count, worker_node_count, infra_node_cpu_cores, control_plane_node_cpu_cores, worker_node_cpu_cores, infra_node_mem_gb, control_plane_node_mem_gb, worker_node_mem_gb, pvc_count, cluster_capacity_cores, cluster_capacity_core_hours, cluster_capacity_memory_gb, cluster_capacity_memory_gb_hours, volume_request_gb, volume_request_gb_mo, pvc_capacity_gb, pvc_capacity_gb_mo) AS (
 WITH schemas AS (
     SELECT
         :customer AS "customer",
@@ -176,4 +152,30 @@ schemas s
 FULL OUTER JOIN node_compute_agg ca USING (customer, date)
 FULL OUTER JOIN storage_agg sa USING (customer, date)
 ORDER BY date
-;
+
+)
+SELECT
+    CAST(schema AS text) AS schema,
+    CAST(date AS date) AS date,
+    CAST(cluster_count AS integer) AS cluster_count,
+    CAST(node_count AS integer) AS node_count,
+    CAST(architecture AS text) AS architecture,
+    CAST(infra_node_count AS integer) AS infra_node_count,
+    CAST(control_plane_node_count AS integer) AS control_plane_node_count,
+    CAST(worker_node_count AS integer) AS worker_node_count,
+    CAST(infra_node_cpu_cores AS numeric(33, 2)) AS infra_node_cpu_cores,
+    CAST(control_plane_node_cpu_cores AS numeric(33, 2)) AS control_plane_node_cpu_cores,
+    CAST(worker_node_cpu_cores AS numeric(33, 2)) AS worker_node_cpu_cores,
+    CAST(infra_node_mem_gb AS numeric(33, 2)) AS infra_node_mem_gb,
+    CAST(control_plane_node_mem_gb AS numeric(33, 2)) AS control_plane_node_mem_gb,
+    CAST(worker_node_mem_gb AS numeric(33, 2)) AS worker_node_mem_gb,
+    CAST(pvc_count AS integer) AS pvc_count,
+    CAST(cluster_capacity_cores AS numeric(33, 2)) AS cluster_capacity_cores,
+    CAST(cluster_capacity_core_hours AS numeric(33, 2)) AS cluster_capacity_core_hours,
+    CAST(cluster_capacity_memory_gb AS numeric(33, 2)) AS cluster_capacity_memory_gb,
+    CAST(cluster_capacity_memory_gb_hours AS numeric(33, 2)) AS cluster_capacity_memory_gb_hours,
+    CAST(volume_request_gb AS numeric(33, 2)) AS volume_request_gb,
+    CAST(volume_request_gb_mo AS numeric(33, 2)) AS volume_request_gb_mo,
+    CAST(pvc_capacity_gb AS numeric(33, 2)) AS pvc_capacity_gb,
+    CAST(pvc_capacity_gb_mo AS numeric(33, 2)) AS pvc_capacity_gb_mo
+FROM schema_rows;

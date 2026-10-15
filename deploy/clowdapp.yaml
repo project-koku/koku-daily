@@ -54,6 +54,32 @@ objects:
             value: ${PROMETHEUS_PUSHGATEWAY}
           - name: CLOWDER_ENABLED
             value: ${CLOWDER_ENABLED}
+          - name: DATABASE_RO_HOST
+            value: ${DATABASE_RO_HOST}
+          - name: DATABASE_RO_PORT
+            value: ${DATABASE_RO_PORT}
+          - name: REPLICA_RETRY_ATTEMPTS
+            value: ${REPLICA_RETRY_ATTEMPTS}
+          - name: REPLICA_RETRY_DELAY
+            value: ${REPLICA_RETRY_DELAY}
+          - name: REPORT_WRITE_BATCH_SIZE
+            value: ${REPORT_WRITE_BATCH_SIZE}
+          - name: REPORT_STATEMENT_TIMEOUT_MS
+            value: ${REPORT_STATEMENT_TIMEOUT_MS}
+          - name: REPORT_LOCK_TIMEOUT_MS
+            value: ${REPORT_LOCK_TIMEOUT_MS}
+          - name: DATABASE_RO_USER
+            valueFrom:
+              secretKeyRef:
+                name: koku-daily-ro-secret
+                key: username
+                optional: true
+          - name: DATABASE_RO_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: koku-daily-ro-secret
+                key: password
+                optional: true
           - name: WEEKLY_REPORT_SCHEDULED_DAY
             value: ${WEEKLY_REPORT_SCHEDULED_DAY}
           - name: KEY_METRICS_NUM_MONTHS
@@ -87,6 +113,32 @@ objects:
             value: ${WAREHOUSE_PATH}
           - name: CLOWDER_ENABLED
             value: ${CLOWDER_ENABLED}
+          - name: DATABASE_RO_HOST
+            value: ${DATABASE_RO_HOST}
+          - name: DATABASE_RO_PORT
+            value: ${DATABASE_RO_PORT}
+          - name: REPLICA_RETRY_ATTEMPTS
+            value: ${REPLICA_RETRY_ATTEMPTS}
+          - name: REPLICA_RETRY_DELAY
+            value: ${REPLICA_RETRY_DELAY}
+          - name: REPORT_WRITE_BATCH_SIZE
+            value: ${REPORT_WRITE_BATCH_SIZE}
+          - name: REPORT_STATEMENT_TIMEOUT_MS
+            value: ${REPORT_STATEMENT_TIMEOUT_MS}
+          - name: REPORT_LOCK_TIMEOUT_MS
+            value: ${REPORT_LOCK_TIMEOUT_MS}
+          - name: DATABASE_RO_USER
+            valueFrom:
+              secretKeyRef:
+                name: koku-daily-ro-secret
+                key: username
+                optional: true
+          - name: DATABASE_RO_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: koku-daily-ro-secret
+                key: password
+                optional: true
           - name: WEEKLY_REPORT_SCHEDULED_DAY
             value: ${WEEKLY_REPORT_SCHEDULED_DAY}
           - name: RUN_DAILY_REPORTS
@@ -155,3 +207,24 @@ parameters:
   value: "true"
 - name: KEY_METRICS_NUM_MONTHS
   value: "2"
+- name: DATABASE_RO_HOST
+  description: Read replica hostname; required, never inferred from primary
+  required: true
+- name: DATABASE_RO_PORT
+  description: Read replica port
+  value: "5432"
+- name: REPLICA_RETRY_ATTEMPTS
+  description: Maximum attempts per tenant for confirmed recovery conflicts
+  value: "3"
+- name: REPLICA_RETRY_DELAY
+  description: Delay in seconds between recovery conflict attempts
+  value: "1"
+- name: REPORT_WRITE_BATCH_SIZE
+  description: Maximum dates per RW upsert transaction
+  value: "100"
+- name: REPORT_STATEMENT_TIMEOUT_MS
+  description: RW statement timeout in milliseconds
+  value: "5000"
+- name: REPORT_LOCK_TIMEOUT_MS
+  description: RW lock timeout in milliseconds
+  value: "1000"

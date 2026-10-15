@@ -1,17 +1,4 @@
-INSERT
-  INTO __cust_cost_model_report (
-      customer,
-      cost_model_id,
-      source_type,
-      created_timestamp,
-      updated_timestamp,
-      rates,
-      markup,
-      distribution,
-      cost_model_map_id,
-      provider_id,
-      cluster_id
-  )
+WITH schema_rows (customer, cost_model_id, source_type, created_timestamp, updated_timestamp, rates, markup, distribution, cost_model_map_id, provider_id, cluster_id) AS (
 SELECT    :customer AS "customer",
           cm.uuid AS "cost_model_id",
           cm.source_type AS "source_type",
@@ -31,4 +18,18 @@ JOIN      public.api_provider p
 ON        p.uuid = map.provider_uuid
           -- cluster ids (if applicable) can be read from auth credentials
 JOIN      public.api_providerauthentication auth
-ON        auth.id = p.authentication_id;
+ON        auth.id = p.authentication_id
+)
+SELECT
+    CAST(customer AS text) AS customer,
+    CAST(cost_model_id AS text) AS cost_model_id,
+    CAST(source_type AS text) AS source_type,
+    CAST(created_timestamp AS date) AS created_timestamp,
+    CAST(updated_timestamp AS date) AS updated_timestamp,
+    CAST(rates AS jsonb) AS rates,
+    CAST(markup AS jsonb) AS markup,
+    CAST(distribution AS text) AS distribution,
+    CAST(cost_model_map_id AS text) AS cost_model_map_id,
+    CAST(provider_id AS text) AS provider_id,
+    CAST(cluster_id AS text) AS cluster_id
+FROM schema_rows;
