@@ -68,9 +68,17 @@ representative tenant counts before production rollout.
 
 ## Local checks
 
-Create a Python 3.11 `.venv`, then run `.venv/bin/python tools/bootstrap.py` to
-install the runtime lock and pinned development tools. `bash tools/gauntlet.sh`
-runs the reproducible checks. The integration harness uses disposable PostgreSQL
+Install the runtime dependencies from `Pipfile.lock` in a Python 3.11 environment,
+then install the test dependencies and run the suite:
+
+```sh
+python -m pip install pytest==9.0.3 hypothesis==6.140.3
+docker compose -f tests/postgres-compose.yaml up -d --wait
+python -m pytest -q
+docker compose -f tests/postgres-compose.yaml down
+```
+
+The integration harness uses disposable PostgreSQL
 16 primary and physical standby containers with host ports 25435/25436 bound to
 127.0.0.1. It never uses production database credentials or delivery services.
 The fixtures contain test data only. `docker compose -f tests/postgres-compose.yaml
@@ -78,5 +86,4 @@ down` removes the temporary containers; their databases live in tmpfs.
 
 The original SQL under `tests/fixtures/legacy_sql` is a fixed baseline for output
 comparison. Integration checks run both SQL paths against the same fixture,
-including paused WAL replay, recovery conflicts, and lock contention. Evidence
-and limits are recorded in `EVIDENCE.md`.
+including paused WAL replay, recovery conflicts, and lock contention.

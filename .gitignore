@@ -138,3 +138,11 @@ openshift/parameters.properties
 !.cursor/rules/
 !.cursor/commands/
 !.cursor/skills/
+
+# Local COST-8395 assurance artifacts; excluded from the application PR.
+/.local-assurance/
+/SPEC.md
+/EVIDENCE.md
+/requirements-dev.txt
+/requirements-dev.lock
+/tools/
