@@ -47,6 +47,14 @@ def check_defence(path, old, new, test):
 def main():
     checks = [
         (
+            "kokudaily/reports.py",
+            "if cutoff is None:",
+            "if True:",
+            "tests/test_reports.py::"
+            "test_active_setup_captures_one_cutoff_"
+            "for_all_tenants_and_reports",
+        ),
+        (
             "tools/mutation_check.py",
             "if source.count(old) != 1:",
             "if False:",

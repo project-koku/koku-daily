@@ -79,3 +79,75 @@ def test_disabled_daily_and_weekly_tasks_do_no_setup(monkeypatch):
     monkeypatch.setattr(reports, "REPORTS", {})
     assert reports.run_reports() == {}
     assert reader.events == []
+
+
+def test_active_setup_captures_one_cutoff_for_all_tenants_and_reports(
+    monkeypatch,
+):
+    from datetime import datetime, timezone
+
+    cutoff = datetime(2026, 1, 31, 23, 59, tzinfo=timezone.utc)
+    tag_row = {
+        "customer": "org1",
+        "openshift_label_key_count": 1,
+        "aws_tag_key_count": 0,
+        "azure_tag_key_count": 0,
+        "gcp_label_key_count": 0,
+    }
+    node_row = {
+        "customer": "org1",
+        "provider_id": "provider1",
+        "cluster_id": "cluster1",
+        "node": "node1",
+        "report_month": cutoff.date(),
+        "cpu_cores": 4,
+        "memory_gigabytes": 16,
+    }
+    reader = Engine(
+        [
+            [{"cutoff": cutoff}],
+            [{"schema_name": "org1"}, {"schema_name": "org2"}],
+            [{"exists": 1}],
+            [tag_row],
+            [{"exists": 1}],
+            [dict(tag_row, customer="org2")],
+            [{"schema_name": "org1"}],
+            [{"exists": 1}],
+            [node_row],
+        ]
+    )
+    monkeypatch.setattr(reports.Config, "RUN_DAILY_REPORTS", True)
+    monkeypatch.setattr(
+        reports,
+        "REQUIRES",
+        [
+            {
+                "setup": [
+                    {
+                        "frequency": "daily",
+                        "per_schema_file": (
+                            "sql/" "cust_tag_report_setup_schema.sql"
+                        ),
+                    },
+                    {
+                        "frequency": "weekly",
+                        "per_schema_file": (
+                            "sql/" "cust_node_report_setup_schema.sql"
+                        ),
+                    },
+                ]
+            }
+        ],
+    )
+    datasets = reports._collect_datasets(reader, run_weeklys=True)
+    assert len(datasets["__cust_tag_report"]) == 2
+    assert datasets["__cust_node_report"] == [node_row]
+    calls = [event for event in reader.events if isinstance(event, tuple)]
+    assert sum("clock_timestamp()" in sql for sql, _ in calls) == 1
+    assert [
+        params["run_cutoff"]
+        for _, params in calls
+        if params and "customer" in params
+    ] == [cutoff] * 3
+    assert reader.events.count("commit") == 6
+    assert not reader.active

@@ -11,6 +11,20 @@ from kokudaily import replica
 from sqlalchemy.exc import DBAPIError
 
 
+class Result:
+    def __init__(self, rows):
+        self.rows = rows
+
+    def keys(self):
+        return list(self.rows[0]) if self.rows else []
+
+    def mappings(self):
+        return self.rows
+
+    def __iter__(self):
+        return iter(tuple(row.values()) for row in self.rows)
+
+
 class Engine:
     def __init__(self, results=()):
         self.results = iter(results)
@@ -46,10 +60,7 @@ class Engine:
         result = next(self.results)
         if isinstance(result, Exception):
             raise result
-        return SimpleNamespace(
-            keys=lambda: list(result[0]) if result else [],
-            mappings=lambda: result,
-        )
+        return Result(result)
 
 
 def conflict(
@@ -77,8 +88,11 @@ def test_reads_are_read_only_fully_consumed_and_committed():
     assert not engine.active
 
 
-def test_conflict_rolls_back_before_retry_and_publishes_once(monkeypatch):
-    engine = Engine([conflict(), [{"x": 2}]])
+@pytest.mark.parametrize("code", ["40001", "57014", "57P01"])
+def test_conflict_rolls_back_before_retry_and_publishes_once(
+    monkeypatch, code
+):
+    engine = Engine([conflict(code), [{"x": 2}]])
     pauses = []
     monkeypatch.setattr(
         replica.time,
@@ -92,6 +106,7 @@ def test_conflict_rolls_back_before_retry_and_publishes_once(monkeypatch):
     assert result.complete
     assert engine.events.count("rollback") == 1
     assert engine.events.count("commit") == 1
+    assert engine.events.count("connect") == 2
     assert pauses == [(0.1, False)]
 
 
