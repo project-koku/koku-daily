@@ -84,6 +84,10 @@ The integration harness uses disposable PostgreSQL
 The fixtures contain test data only. `docker compose -f tests/postgres-compose.yaml
 down` removes the temporary containers; their databases live in tmpfs.
 
-The original SQL under `tests/fixtures/legacy_sql` is a fixed baseline for output
-comparison. Integration checks run both SQL paths against the same fixture,
-including paused WAL replay, recovery conflicts, and lock contention.
+Only SQL modified by this change has an original copy under
+`tests/fixtures/legacy_sql`. The parity harness explicitly selects these frozen
+queries and shares unchanged queries from `kokudaily/sql`; missing frozen files
+fail rather than falling back. This compares the old staging logic with the new
+replica path without duplicating every report query. Integration checks cover
+paused WAL replay, recovery conflicts, and lock contention. Future query changes
+need a baseline fixture if they are to be checked against their prior behavior.

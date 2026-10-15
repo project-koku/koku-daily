@@ -23,6 +23,25 @@ from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
 
 LEGACY = Path("tests/fixtures/legacy_sql")
+FROZEN_SQL = frozenset(
+    {
+        "cust_cost_model_report_setup_schema.sql",
+        "cust_node_report_setup_schema.sql",
+        "cust_tag_report.sql",
+        "cust_tag_report_setup_schema.sql",
+        "key_metrics/cust_cloud_costs_data_setup_schema.sql",
+        "key_metrics/cust_openshift_costs_data_setup_schema.sql",
+        "key_metrics/cust_openshift_infra_data_setup_schema.sql",
+        "key_metrics/cust_total_data.sql",
+        "key_metrics/cust_total_data_setup.sql",
+    }
+)
+
+
+def legacy_sql(name):
+    """Freeze modified SQL; share queries unchanged by COST-8395."""
+    root = LEGACY if name in FROZEN_SQL else Path("kokudaily/sql")
+    return (root / name).read_text()
 
 
 def configure(monkeypatch, reader, writer, tmp_path):
@@ -54,24 +73,24 @@ def legacy_outputs(writer):
         for task in reports.REQUIRES[0]["setup"]:
             params = dict(task["sql_parameters"], run_cutoff=cutoff)
             if "per_schema_file" in task:
-                con.execute(text((LEGACY / task["init_file"][4:]).read_text()))
+                con.execute(text(legacy_sql(task["init_file"][4:])))
                 for schema in list_tenant_schemas(
                     con, task["tenant_filter"], params.get("provider_types")
                 ):
-                    sql = (LEGACY / task["per_schema_file"][4:]).read_text()
+                    sql = legacy_sql(task["per_schema_file"][4:])
                     con.execute(
                         text(render_schema_sql(sql, schema)),
                         dict(params, customer=schema),
                     )
             else:
-                con.execute(text((LEGACY / task["file"][4:]).read_text()))
+                con.execute(text(legacy_sql(task["file"][4:])))
         selected = dict(
             reports.REPORTS, **reports.WEEKLY_REPORTS, **reports.DAILY_REPORTS
         )
         for name, report in selected.items():
             if report.get("namespace", "hccm-prod") != "hccm-prod":
                 continue
-            sql = (LEGACY / report["file"][4:]).read_text()
+            sql = legacy_sql(report["file"][4:])
             result = con.execute(text(sql), report.get("sql_parameters") or {})
             expected[name] = (list(result.keys()), list(result.fetchall()))
         con.commit()
@@ -269,7 +288,7 @@ def test_writer_lock_timeout_and_atomic_batch_rollback(pg):
 def test_typed_intermediate_conversion_matches_postgres_insert(pg):
     writer, reader = pg
     with writer.begin() as con:
-        sql = (LEGACY / "cust_node_report_setup.sql").read_text()
+        sql = legacy_sql("cust_node_report_setup.sql")
         con.execute(text(sql))
         con.execute(
             text(
