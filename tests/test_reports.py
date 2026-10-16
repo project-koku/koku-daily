@@ -151,3 +151,72 @@ def test_active_setup_captures_one_cutoff_for_all_tenants_and_reports(
     ] == [cutoff] * 3
     assert reader.events.count("commit") == 6
     assert not reader.active
+
+
+def test_recovery_conflicts_retry_at_every_global_read(monkeypatch, tmp_path):
+    from datetime import datetime, timezone
+    from kokudaily import replica
+    from test_replica import conflict
+
+    cutoff = datetime(2026, 1, 31, tzinfo=timezone.utc)
+    reader = Engine(
+        [
+            conflict(),
+            [{"cutoff": cutoff}],
+            conflict(),
+            [{"schema_name": "org1"}],
+            [{"exists": 1}],
+            [],
+            conflict(),
+            [{"date": cutoff.date()}],
+            conflict(),
+            [],
+            conflict(),
+            [{"count": 2}],
+        ]
+    )
+    reader.dispose = Mock()
+    writer = Engine([[]])
+    sleep = Mock()
+    monkeypatch.setattr(replica.time, "sleep", sleep)
+    monkeypatch.setattr(reports.Config, "REPLICA_RETRY_ATTEMPTS", 2)
+    monkeypatch.setattr(reports.Config, "REPLICA_RETRY_DELAY", 0.25)
+    monkeypatch.setattr(reports.Config, "RUN_DAILY_REPORTS", True)
+    monkeypatch.setattr(reports.Config, "WEEKLY_REPORT_SCHEDULED_DAY", None)
+    monkeypatch.setattr(reports.Config, "NAMESPACE", "test")
+    monkeypatch.setattr(reports, "create_engine", lambda readonly: reader)
+    monkeypatch.setattr(reports, "DB_ENGINE", writer)
+    monkeypatch.setattr(reports, "gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr(reports, "DAILY_REPORTS", {})
+    monkeypatch.setattr(
+        reports,
+        "REPORTS",
+        {
+            "test": {"file": "sql/count_filtered_users.sql", "target": "test"},
+        },
+    )
+    monkeypatch.setattr(
+        reports,
+        "REQUIRES",
+        [
+            {
+                "setup": [
+                    {
+                        "frequency": "daily",
+                        "per_schema_file": "sql/cust_tag_report_setup_schema.sql",
+                    },
+                    {
+                        "frequency": "daily",
+                        "file": "sql/key_metrics/cust_total_data_setup.sql",
+                    },
+                ]
+            }
+        ],
+    )
+    result = reports.run_reports()
+    assert result["test"]["test"]["data"] == [(2,)]
+    assert reader.events.count("rollback") == 5
+    assert reader.events.count("close") == 11
+    assert writer.events.count("commit") == 1
+    assert sleep.call_args_list == [((0.25,),)] * 5
+    reader.dispose.assert_called_once_with()

@@ -15,6 +15,7 @@ from kokudaily.replica import bind_datasets
 from kokudaily.replica import merge_history
 from kokudaily.replica import read_rows
 from kokudaily.replica import read_schema
+from kokudaily.replica import retry_read
 from kokudaily.replica import write_totals
 from kokudaily.setup_runner import list_tenant_schemas
 from kokudaily.setup_runner import TENANT_FILTER_ALL
@@ -429,18 +430,35 @@ def _required_sql(filename):
     return sql
 
 
+def _read_rows(reader, sql, params=None):
+    """Apply configured recovery retries to non-tenant replica queries."""
+    return retry_read(
+        lambda: read_rows(reader, sql, params),
+        attempts=Config.REPLICA_RETRY_ATTEMPTS,
+        delay=Config.REPLICA_RETRY_DELAY,
+    )
+
+
 def _run_setup_task(reader, task, cutoff):
     """Collect inputs with a separate RO transaction per schema."""
     parameters = dict(task.get("sql_parameters") or {})
     parameters["run_cutoff"] = cutoff
-    with reader.connect() as con:
-        with con.begin():
-            con.execute(text("SET TRANSACTION READ ONLY"))
-            schemas = list_tenant_schemas(
-                con,
-                task.get("tenant_filter", TENANT_FILTER_ALL),
-                parameters.get("provider_types"),
-            )
+
+    def discover():
+        with reader.connect() as con:
+            with con.begin():
+                con.execute(text("SET TRANSACTION READ ONLY"))
+                return list_tenant_schemas(
+                    con,
+                    task.get("tenant_filter", TENANT_FILTER_ALL),
+                    parameters.get("provider_types"),
+                )
+
+    schemas = retry_read(
+        discover,
+        attempts=Config.REPLICA_RETRY_ATTEMPTS,
+        delay=Config.REPLICA_RETRY_DELAY,
+    )
     sql = _required_sql(task["per_schema_file"])
     # These names come from the checked-in task descriptors, never user input.
     table = SETUP_TABLES[task["per_schema_file"]]
@@ -473,7 +491,7 @@ def _collect_datasets(reader, run_weeklys):
                 continue
             if task.get("per_schema_file"):
                 if cutoff is None:
-                    cutoff = read_rows(
+                    cutoff = _read_rows(
                         reader, "SELECT clock_timestamp() AS cutoff"
                     ).rows[0]["cutoff"]
                 table, rows, succeeded = _run_setup_task(reader, task, cutoff)
@@ -483,7 +501,7 @@ def _collect_datasets(reader, run_weeklys):
                 sql, params = bind_datasets(
                     _required_sql(task["file"]), datasets, DEFINITIONS
                 )
-                current = read_rows(reader, sql, params).rows
+                current = _read_rows(reader, sql, params).rows
                 if complete:
                     write_totals(
                         DB_ENGINE,
@@ -499,7 +517,7 @@ def _collect_datasets(reader, run_weeklys):
                         "Reports incomplete: suppressing daily totals "
                         "persistence"
                     )
-                history = read_rows(
+                history = _read_rows(
                     reader, "SELECT * FROM public.__customer_total_data"
                 ).rows
                 datasets["__customer_total_data"] = merge_history(
@@ -550,7 +568,7 @@ def run_reports(filter_target=None):
             )
             parameters = dict(report.get("sql_parameters") or {})
             parameters.update(binds)
-            result = read_rows(reader, sql, parameters)
+            result = _read_rows(reader, sql, parameters)
             report_data.setdefault(target, {})[report_name] = _save_report(
                 report_name, result, temp_dir
             )

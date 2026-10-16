@@ -295,3 +295,79 @@ def test_intermediate_uuid_and_timestamp_round_trip():
     assert json.loads(parameters["dataset_0"]) == [
         {"id": str(value), "created": timestamp.isoformat()}
     ]
+
+
+@pytest.mark.parametrize("code", ["40001", "57014", "57P01"])
+def test_general_read_retries_after_rollback_and_close(monkeypatch, code):
+    engine = Engine([conflict(code), [{"count": 2}]])
+    pauses = []
+    monkeypatch.setattr(
+        replica.time,
+        "sleep",
+        lambda delay: pauses.append(
+            (delay, list(engine.events), engine.active)
+        ),
+    )
+    result = replica.retry_read(
+        lambda: replica.read_rows(engine, "SELECT count(*)"),
+        attempts=2,
+        delay=0.25,
+    )
+    assert result.rows == [{"count": 2}]
+    assert len(pauses) == 1
+    assert pauses[0][0] == 0.25
+    assert pauses[0][1][-2:] == ["rollback", "close"]
+    assert pauses[0][2] is False
+    assert engine.events.count("connect") == 2
+    assert engine.events.count("commit") == 1
+
+
+def test_general_read_exhaustion_reraises_last_error(monkeypatch):
+    errors = [conflict(), conflict()]
+    engine = Engine(errors)
+    sleep = Mock()
+    monkeypatch.setattr(replica.time, "sleep", sleep)
+    with pytest.raises(DBAPIError) as caught:
+        replica.retry_read(
+            lambda: replica.read_rows(engine, "SELECT 1"),
+            attempts=2,
+            delay=0.25,
+        )
+    assert caught.value is errors[-1]
+    assert engine.events.count("rollback") == 2
+    assert engine.events.count("close") == 2
+    sleep.assert_called_once_with(0.25)
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        conflict("57014", "canceling statement due to user request"),
+        conflict("40001", "serialization failure"),
+        RuntimeError("offline"),
+    ],
+)
+def test_general_read_unrelated_failure_never_retries(monkeypatch, error):
+    operation = Mock(side_effect=error)
+    sleep = Mock()
+    monkeypatch.setattr(replica.time, "sleep", sleep)
+    with pytest.raises(type(error)) as caught:
+        replica.retry_read(operation)
+    assert caught.value is error
+    operation.assert_called_once_with()
+    sleep.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "options",
+    [
+        {"attempts": 0},
+        {"delay": -1},
+        {"delay": float("nan")},
+    ],
+)
+def test_general_read_invalid_settings_never_calls_operation(options):
+    operation = Mock()
+    with pytest.raises(ValueError, match="retry settings"):
+        replica.retry_read(operation, **options)
+    operation.assert_not_called()

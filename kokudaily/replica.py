@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 from typing import Any
+from typing import Callable
+from typing import TypeVar
 from uuid import UUID
 
 from kokudaily.setup_runner import render_schema_sql
@@ -18,6 +20,7 @@ from sqlalchemy.exc import DBAPIError
 
 LOG = logging.getLogger(__name__)
 Rows = list[dict[str, Any]]
+ReadResult = TypeVar("ReadResult")
 
 
 @dataclass
@@ -60,6 +63,31 @@ def is_recovery_conflict(error: DBAPIError) -> bool:
     return code in {"40001", "57014", "57P01"} and (
         "conflict with recovery" in message.lower()
     )
+
+
+def retry_read(
+    operation: Callable[[], ReadResult],
+    attempts: int = 3,
+    delay: float = 1,
+) -> ReadResult:
+    """Retry a complete RO transaction; fail when recovery retries exhaust."""
+    if attempts < 1 or delay < 0 or not math.isfinite(delay):
+        raise ValueError("Invalid replica retry settings")
+    for attempt in range(1, attempts + 1):
+        try:
+            return operation()
+        except DBAPIError as error:
+            if not is_recovery_conflict(error):
+                raise
+            LOG.warning(
+                "Recovery conflict on replica read, attempt %s/%s",
+                attempt,
+                attempts,
+            )
+            if attempt == attempts:
+                raise
+            time.sleep(delay)
+    raise AssertionError("Unreachable replica retry state")
 
 
 def read_schema(

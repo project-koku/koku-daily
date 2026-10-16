@@ -46,13 +46,17 @@ live replica wiring.
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| REPLICA_RETRY_ATTEMPTS | 3 | Total attempts per schema for confirmed recovery conflicts |
+| REPLICA_RETRY_ATTEMPTS | 3 | Total attempts per replica read for confirmed recovery conflicts |
 | REPLICA_RETRY_DELAY | 1 | Seconds between attempts, outside any transaction |
 | REPORT_STATEMENT_TIMEOUT_MS | 5000 | Transaction-local RW statement timeout |
 | REPORT_LOCK_TIMEOUT_MS | 1000 | Transaction-local RW lock timeout |
 
 Retry attempts, ports, and timeouts must be positive integers; delay
-must be finite and nonnegative. Only database errors whose code and server
+must be finite and nonnegative. Cutoff, tenant discovery, totals aggregation,
+history and final report reads use the same bounded recovery retries. Each failed
+read transaction rolls back and releases its connection before the retry delay.
+Exhausting retries on these global reads fails the job; no empty result is
+substituted. Totals already committed before a later report failure remain saved. Only database errors whose code and server
 diagnostic identify a recovery conflict are retried. User cancellations and
 other SQL/connectivity failures propagate. A canceled schema publishes no rows
 until a complete read succeeds. A schema exhausting its retries is logged as

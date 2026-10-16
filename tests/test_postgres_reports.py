@@ -17,6 +17,7 @@ from kokudaily import reports
 from kokudaily.replica import is_recovery_conflict
 from kokudaily.replica import read_rows
 from kokudaily.replica import read_schema
+from kokudaily.replica import retry_read
 from kokudaily.replica import write_totals
 from kokudaily.setup_runner import list_tenant_schemas
 from kokudaily.setup_runner import render_schema_sql
@@ -198,7 +199,8 @@ def test_all_reports_match_legacy_on_standby_with_wal_paused(
         wait_replay(writer, reader)
 
 
-def test_real_recovery_conflict_rolls_back_and_retry_succeeds(pg):
+@pytest.mark.parametrize("read_kind", ["tenant", "global"])
+def test_real_recovery_conflict_rolls_back_and_retry_succeeds(pg, read_kind):
     writer, reader = pg
     started = threading.Event()
     results = []
@@ -214,8 +216,8 @@ def test_real_recovery_conflict_rolls_back_and_retry_succeeds(pg):
 
     def execute():
         try:
-            results.append(
-                read_schema(
+            if read_kind == "tenant":
+                result = read_schema(
                     reader,
                     "SELECT pg_sleep(3), key "
                     "FROM {schema}.reporting_awstags_values "
@@ -224,7 +226,17 @@ def test_real_recovery_conflict_rolls_back_and_retry_succeeds(pg):
                     {},
                     delay=0,
                 )
-            )
+            else:
+                result = retry_read(
+                    lambda: read_rows(
+                        reader,
+                        "SELECT pg_sleep(3), key "
+                        "FROM org1.reporting_awstags_values "
+                        "/* recovery_probe */",
+                    ),
+                    delay=0,
+                )
+            results.append(result)
         except Exception as error:
             errors.append(error)
 

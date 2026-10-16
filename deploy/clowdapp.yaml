@@ -195,7 +195,7 @@ parameters:
   description: Existing RDS replica secret containing db.host and db.port
   required: true
 - name: REPLICA_RETRY_ATTEMPTS
-  description: Maximum attempts per tenant for confirmed recovery conflicts
+  description: Maximum attempts per replica read for confirmed recovery conflicts
   value: "3"
 - name: REPLICA_RETRY_DELAY
   description: Delay in seconds between recovery conflict attempts
