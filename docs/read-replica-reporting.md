@@ -30,14 +30,16 @@ are preserved, and parameter values are hidden from SQLAlchemy exception output.
 Do not log environment dumps or connection URLs.
 
 The locked app-common-python database configuration supplies a primary endpoint
-only. Before deploying this version, app-interface must supply the actual replica
-hostname as the `DATABASE_RO_HOST` ClowdApp template parameter and ensure network
-access and SELECT privileges for the reporting user on the replica. Both scheduled
-jobs receive the RO endpoint. An optional `koku-daily-ro-secret` with `username`
-and `password` keys supplies separate RO credentials; otherwise Clowder's primary
-credentials are inherited. The existing Clowder database configuration continues
-to supply RW access for final upserts. The template requires the RO hostname;
-applying code alone does not establish or verify live replica wiring.
+only. Before deploying this version, app-interface must supply the existing RDS
+replica secret name as the `KOKU_READ_ONLY_DB` ClowdApp template parameter
+(`koku-db-ro` in Stage). Both scheduled jobs read `DATABASE_RO_HOST` and
+`DATABASE_RO_PORT` from that secret's `db.host` and `db.port` keys. This follows
+Koku's existing replica configuration without hardcoding the generated hostname.
+Clowder's primary username, password and database name are shared by both
+connections. Ensure network access and SELECT privileges on the replica. The
+existing Clowder database configuration supplies RW access for final upserts.
+The replica secret is required; applying code alone does not establish or verify
+live replica wiring.
 
 ## Operational settings
 

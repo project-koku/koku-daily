@@ -55,9 +55,15 @@ objects:
           - name: CLOWDER_ENABLED
             value: ${CLOWDER_ENABLED}
           - name: DATABASE_RO_HOST
-            value: ${DATABASE_RO_HOST}
+            valueFrom:
+              secretKeyRef:
+                name: ${KOKU_READ_ONLY_DB}
+                key: db.host
           - name: DATABASE_RO_PORT
-            value: ${DATABASE_RO_PORT}
+            valueFrom:
+              secretKeyRef:
+                name: ${KOKU_READ_ONLY_DB}
+                key: db.port
           - name: REPLICA_RETRY_ATTEMPTS
             value: ${REPLICA_RETRY_ATTEMPTS}
           - name: REPLICA_RETRY_DELAY
@@ -68,18 +74,6 @@ objects:
             value: ${REPORT_STATEMENT_TIMEOUT_MS}
           - name: REPORT_LOCK_TIMEOUT_MS
             value: ${REPORT_LOCK_TIMEOUT_MS}
-          - name: DATABASE_RO_USER
-            valueFrom:
-              secretKeyRef:
-                name: koku-daily-ro-secret
-                key: username
-                optional: true
-          - name: DATABASE_RO_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: koku-daily-ro-secret
-                key: password
-                optional: true
           - name: WEEKLY_REPORT_SCHEDULED_DAY
             value: ${WEEKLY_REPORT_SCHEDULED_DAY}
           - name: KEY_METRICS_NUM_MONTHS
@@ -114,9 +108,15 @@ objects:
           - name: CLOWDER_ENABLED
             value: ${CLOWDER_ENABLED}
           - name: DATABASE_RO_HOST
-            value: ${DATABASE_RO_HOST}
+            valueFrom:
+              secretKeyRef:
+                name: ${KOKU_READ_ONLY_DB}
+                key: db.host
           - name: DATABASE_RO_PORT
-            value: ${DATABASE_RO_PORT}
+            valueFrom:
+              secretKeyRef:
+                name: ${KOKU_READ_ONLY_DB}
+                key: db.port
           - name: REPLICA_RETRY_ATTEMPTS
             value: ${REPLICA_RETRY_ATTEMPTS}
           - name: REPLICA_RETRY_DELAY
@@ -127,18 +127,6 @@ objects:
             value: ${REPORT_STATEMENT_TIMEOUT_MS}
           - name: REPORT_LOCK_TIMEOUT_MS
             value: ${REPORT_LOCK_TIMEOUT_MS}
-          - name: DATABASE_RO_USER
-            valueFrom:
-              secretKeyRef:
-                name: koku-daily-ro-secret
-                key: username
-                optional: true
-          - name: DATABASE_RO_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: koku-daily-ro-secret
-                key: password
-                optional: true
           - name: WEEKLY_REPORT_SCHEDULED_DAY
             value: ${WEEKLY_REPORT_SCHEDULED_DAY}
           - name: RUN_DAILY_REPORTS
@@ -207,12 +195,9 @@ parameters:
   value: "true"
 - name: KEY_METRICS_NUM_MONTHS
   value: "2"
-- name: DATABASE_RO_HOST
-  description: Read replica hostname; required, never inferred from primary
+- name: KOKU_READ_ONLY_DB
+  description: Existing RDS replica secret containing db.host and db.port
   required: true
-- name: DATABASE_RO_PORT
-  description: Read replica port
-  value: "5432"
 - name: REPLICA_RETRY_ATTEMPTS
   description: Maximum attempts per tenant for confirmed recovery conflicts
   value: "3"
