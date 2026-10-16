@@ -33,14 +33,18 @@ Do not log environment dumps or connection URLs.
 The locked app-common-python database configuration supplies a primary endpoint
 only. Before deploying this version, app-interface must supply the existing RDS
 replica secret name as the `KOKU_READ_ONLY_DB` ClowdApp template parameter
-(`koku-db-ro` in Stage). Both scheduled jobs read `DATABASE_RO_HOST` and
+(default `koku-db-ro`, matching Stage). The default lets Bonfire process the
+template without an additional parameter; it does not create a replica secret.
+Override it when the replica secret has a different name. Both scheduled jobs read `DATABASE_RO_HOST` and
 `DATABASE_RO_PORT` from that secret's `db.host` and `db.port` keys. This follows
 Koku's existing replica configuration without hardcoding the generated hostname.
 Clowder's primary username, password and database name are shared by both
 connections. Ensure network access and SELECT privileges on the replica. The
 existing Clowder database configuration supplies RW access for final upserts.
-The replica secret is required; applying code alone does not establish or verify
-live replica wiring.
+The replica secret and both keys are required when a job starts; an ephemeral
+environment must provide them before invoking the reporting job. There is no
+primary fallback. Applying code alone does not establish or verify live replica
+wiring.
 
 ## Operational settings
 

@@ -193,6 +193,7 @@ parameters:
   value: "2"
 - name: KOKU_READ_ONLY_DB
   description: Existing RDS replica secret containing db.host and db.port
+  value: koku-db-ro
   required: true
 - name: REPLICA_RETRY_ATTEMPTS
   description: Maximum attempts per replica read for confirmed recovery conflicts

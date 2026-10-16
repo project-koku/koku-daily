@@ -115,6 +115,7 @@ def test_deployment_wires_ro_and_writer_limits_to_both_jobs():
         p for p in template["parameters"] if p["name"] == "KOKU_READ_ONLY_DB"
     )
     assert parameter["required"] is True
+    assert parameter["value"] == "koku-db-ro"
 
 
 def test_touched_schedule_types_preserve_normalization_and_port_fallback(
