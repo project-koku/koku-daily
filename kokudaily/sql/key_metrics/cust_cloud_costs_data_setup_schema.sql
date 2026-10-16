@@ -1,12 +1,4 @@
-INSERT INTO __cust_cloud_cost_report (
-    schema,
-    date,
-    aws_unblended_cost,
-    aws_calculated_amortized_cost,
-    azure_pretax_cost,
-    gcp_unblended_cost,
-    gcp_total
-)
+WITH schema_rows (schema, date, aws_unblended_cost, aws_calculated_amortized_cost, azure_pretax_cost, gcp_unblended_cost, gcp_total) AS (
 WITH schemas AS (
     SELECT
         :customer AS "customer",
@@ -96,4 +88,14 @@ FROM
     FULL OUTER JOIN azure_costs azc USING (customer, date)
     FULL OUTER JOIN gcp_costs gc USING (customer, date)
 ORDER BY date
-;
+
+)
+SELECT
+    CAST(schema AS text) AS schema,
+    CAST(date AS date) AS date,
+    CAST(aws_unblended_cost AS numeric(33, 2)) AS aws_unblended_cost,
+    CAST(aws_calculated_amortized_cost AS numeric(33, 2)) AS aws_calculated_amortized_cost,
+    CAST(azure_pretax_cost AS numeric(33, 2)) AS azure_pretax_cost,
+    CAST(gcp_unblended_cost AS numeric(33, 2)) AS gcp_unblended_cost,
+    CAST(gcp_total AS numeric(33, 2)) AS gcp_total
+FROM schema_rows;

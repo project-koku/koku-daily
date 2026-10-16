@@ -35,7 +35,7 @@ SELECT
     SUM(total_volume_request_gb_mo) AS total_volume_request_gb_mo,
     MAX(total_pvc_capacity_gb) AS total_pvc_capacity_gb,
     SUM(total_pvc_capacity_gb_mo) AS total_pvc_capacity_gb_mo
-FROM public.__customer_total_data
+FROM __customer_total_data
 GROUP BY DATE_TRUNC('month', date)
 ORDER BY DATE_TRUNC('month', date)
 ;
