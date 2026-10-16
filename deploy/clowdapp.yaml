@@ -68,8 +68,6 @@ objects:
             value: ${REPLICA_RETRY_ATTEMPTS}
           - name: REPLICA_RETRY_DELAY
             value: ${REPLICA_RETRY_DELAY}
-          - name: REPORT_WRITE_BATCH_SIZE
-            value: ${REPORT_WRITE_BATCH_SIZE}
           - name: REPORT_STATEMENT_TIMEOUT_MS
             value: ${REPORT_STATEMENT_TIMEOUT_MS}
           - name: REPORT_LOCK_TIMEOUT_MS
@@ -121,8 +119,6 @@ objects:
             value: ${REPLICA_RETRY_ATTEMPTS}
           - name: REPLICA_RETRY_DELAY
             value: ${REPLICA_RETRY_DELAY}
-          - name: REPORT_WRITE_BATCH_SIZE
-            value: ${REPORT_WRITE_BATCH_SIZE}
           - name: REPORT_STATEMENT_TIMEOUT_MS
             value: ${REPORT_STATEMENT_TIMEOUT_MS}
           - name: REPORT_LOCK_TIMEOUT_MS
@@ -204,9 +200,6 @@ parameters:
 - name: REPLICA_RETRY_DELAY
   description: Delay in seconds between recovery conflict attempts
   value: "1"
-- name: REPORT_WRITE_BATCH_SIZE
-  description: Maximum dates per RW upsert transaction
-  value: "100"
 - name: REPORT_STATEMENT_TIMEOUT_MS
   description: RW statement timeout in milliseconds
   value: "5000"

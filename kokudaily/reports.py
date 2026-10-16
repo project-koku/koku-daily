@@ -491,7 +491,6 @@ def _collect_datasets(reader, run_weeklys):
                             "sql/key_metrics/cust_total_data_upsert.sql"
                         ),
                         current,
-                        Config.REPORT_WRITE_BATCH_SIZE,
                         Config.REPORT_STATEMENT_TIMEOUT_MS,
                         Config.REPORT_LOCK_TIMEOUT_MS,
                     )

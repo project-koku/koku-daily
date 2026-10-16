@@ -87,7 +87,6 @@ class Config:
     REPLICA_RETRY_DELAY = float(os.getenv("REPLICA_RETRY_DELAY", "1"))
     if REPLICA_RETRY_DELAY < 0 or not math.isfinite(REPLICA_RETRY_DELAY):
         raise ValueError("REPLICA_RETRY_DELAY must be finite and nonnegative")
-    REPORT_WRITE_BATCH_SIZE = positive_setting("REPORT_WRITE_BATCH_SIZE", 100)
     REPORT_STATEMENT_TIMEOUT_MS = positive_setting(
         "REPORT_STATEMENT_TIMEOUT_MS", 5000
     )

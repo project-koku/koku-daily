@@ -5,7 +5,9 @@ import threading
 import time
 from collections import Counter
 from copy import deepcopy
+from datetime import date
 from datetime import datetime
+from datetime import timedelta
 from datetime import timezone
 from pathlib import Path
 
@@ -257,7 +259,7 @@ def test_read_only_transaction_rejects_writes_on_primary_too(pg):
     assert caught.value.orig.pgcode == "25006"
 
 
-def test_writer_lock_timeout_and_atomic_batch_rollback(pg):
+def test_writer_lock_timeout_and_atomic_totals_rollback(pg):
     writer, reader = pg
     with writer.connect() as blocker:
         transaction = blocker.begin()
@@ -386,3 +388,24 @@ def test_upserts_preserve_history_and_enforce_timeout(
         )
     assert caught.value.orig.pgcode == "57014"
     assert not is_recovery_conflict(caught.value)
+
+
+def test_failure_after_first_100_dates_leaves_all_totals_unchanged(pg):
+    writer, _ = pg
+    rows = [
+        {"date": date(2024, 1, 1) + timedelta(days=day)} for day in range(200)
+    ]
+    rows.append({"date": "not-a-date"})
+    with pytest.raises(DBAPIError):
+        write_totals(
+            writer,
+            "INSERT INTO public.__customer_total_data (date) VALUES (:date)",
+            rows,
+        )
+    with writer.connect() as con:
+        assert (
+            con.execute(
+                text("SELECT count(*) FROM public.__customer_total_data")
+            ).scalar_one()
+            == 1
+        )

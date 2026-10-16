@@ -8,9 +8,10 @@ aggregations using typed, bound JSON recordsets; no temporary tables are created
 Explicit casts preserve the old staging-table rounding and column types.
 
 The RW engine is acquired only to upsert final rows into the existing
-`public.__customer_total_data`. No table migration is required. Each batch
-commits independently and can be rerun idempotently after failure. A failed batch
-rolls back and fails the job; earlier committed batches remain. Historical dates
+`public.__customer_total_data`. No table migration is required. All calculated dates
+are upserted in one statement within one transaction, preserving the previous
+all-or-nothing write behavior. A failure rolls back the complete totals write
+and fails the job; rerunning is idempotent. Historical dates
 outside the newly calculated range remain intact.
 
 ## Connections and deployment
@@ -47,11 +48,10 @@ live replica wiring.
 | --- | --- | --- |
 | REPLICA_RETRY_ATTEMPTS | 3 | Total attempts per schema for confirmed recovery conflicts |
 | REPLICA_RETRY_DELAY | 1 | Seconds between attempts, outside any transaction |
-| REPORT_WRITE_BATCH_SIZE | 100 | Maximum daily rows per RW transaction |
 | REPORT_STATEMENT_TIMEOUT_MS | 5000 | Transaction-local RW statement timeout |
 | REPORT_LOCK_TIMEOUT_MS | 1000 | Transaction-local RW lock timeout |
 
-Retry attempts, batch size, ports, and timeouts must be positive integers; delay
+Retry attempts, ports, and timeouts must be positive integers; delay
 must be finite and nonnegative. Only database errors whose code and server
 diagnostic identify a recovery conflict are retried. User cancellations and
 other SQL/connectivity failures propagate. A canceled schema publishes no rows

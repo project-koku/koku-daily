@@ -179,7 +179,7 @@ def test_intermediates_are_bound_and_preserve_numeric_and_null():
     assert "null" in params["dataset_0"]
 
 
-def test_final_writes_are_bounded_and_set_local_timeouts():
+def test_all_final_totals_commit_once_with_local_timeouts():
     engine = Engine([[], [], []])
     rows = [{"date": day} for day in range(201)]
     replica.write_totals(engine, "INSERT final VALUES (:date)", rows)
@@ -188,14 +188,15 @@ def test_final_writes_are_bounded_and_set_local_timeouts():
         for e in engine.events
         if isinstance(e, tuple) and e[0].startswith("INSERT")
     ]
-    assert [len(e[1]) for e in inserts] == [100, 100, 1]
-    assert engine.events.count("commit") == 3
+    assert [len(e[1]) for e in inserts] == [201]
+    assert engine.events.count("commit") == 1
+    assert engine.events.count("begin") == 1
     settings = [
         e
         for e in engine.events
         if isinstance(e, tuple) and "set_config" in e[0]
     ]
-    assert len(settings) == 6
+    assert len(settings) == 2
     assert {e[1]["timeout"] for e in settings} == {"5000ms", "1000ms"}
 
 
@@ -212,7 +213,7 @@ def test_no_rows_never_opens_writer():
     assert engine.events == []
 
 
-def test_batch_is_one_statement_so_timeout_covers_whole_batch():
+def test_all_totals_use_one_statement_so_timeout_covers_whole_write():
     engine = Engine([[]])
     replica.write_totals(
         engine,
@@ -241,7 +242,7 @@ def test_invalid_retry_settings_never_connect(options):
 
 @pytest.mark.parametrize(
     "options",
-    [{"batch_size": 0}, {"statement_timeout": 0}, {"lock_timeout": -1}],
+    [{"statement_timeout": 0}, {"lock_timeout": -1}],
 )
 def test_invalid_writer_settings_never_connect(options):
     engine = Engine()
@@ -250,7 +251,7 @@ def test_invalid_writer_settings_never_connect(options):
     assert not engine.events
 
 
-def test_malformed_batched_upsert_rolls_back():
+def test_malformed_totals_upsert_rolls_back():
     engine = Engine()
     with pytest.raises(ValueError, match="VALUES clause"):
         replica.write_totals(engine, "INSERT final", [{"x": 1}, {"x": 2}])

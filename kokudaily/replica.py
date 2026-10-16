@@ -149,39 +149,37 @@ def write_totals(
     engine: Any,
     sql: str,
     rows: Rows,
-    batch_size: int = 100,
     statement_timeout: int = 5000,
     lock_timeout: int = 1000,
 ) -> None:
-    if min(batch_size, statement_timeout, lock_timeout) < 1:
-        raise ValueError("Writer batch size and timeouts must be positive")
-    for offset in range(0, len(rows), batch_size):
-        with engine.begin() as con:
-            for setting, value in (
-                ("statement_timeout", statement_timeout),
-                ("lock_timeout", lock_timeout),
-            ):
-                con.execute(
-                    text(f"SELECT set_config('{setting}', :timeout, true)"),
-                    {"timeout": f"{value}ms"},
-                )
-            statement, parameters = _batch_values(
-                sql, rows[offset : offset + batch_size]
+    if min(statement_timeout, lock_timeout) < 1:
+        raise ValueError("Writer timeouts must be positive")
+    if not rows:
+        return
+    with engine.begin() as con:
+        for setting, value in (
+            ("statement_timeout", statement_timeout),
+            ("lock_timeout", lock_timeout),
+        ):
+            con.execute(
+                text(f"SELECT set_config('{setting}', :timeout, true)"),
+                {"timeout": f"{value}ms"},
             )
-            con.execute(text(statement), parameters)
+        statement, parameters = _totals_values(sql, rows)
+        con.execute(text(statement), parameters)
 
 
-def _batch_values(sql: str, batch: Rows) -> tuple[str, dict]:
-    if len(batch) == 1:
-        return sql, batch[0]
+def _totals_values(sql: str, rows: Rows) -> tuple[str, dict]:
+    if len(rows) == 1:
+        return sql, rows[0]
     # DBAPI executemany resets statement_timeout for every row. One INSERT
-    # bounds the complete batch with a single timeout.
+    # bounds the complete totals write with a single timeout.
     match = re.search(r"\bVALUES\s*(\([^)]*\))", sql, re.I)
     if match is None:
         raise ValueError("Expected a VALUES clause in totals upsert")
     values = []
     parameters = {}
-    for index, row in enumerate(batch):
+    for index, row in enumerate(rows):
 
         def parameter_name(parameter: re.Match[str]) -> str:
             return f":{parameter.group(1)}_{index}"

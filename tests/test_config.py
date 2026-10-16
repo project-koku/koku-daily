@@ -62,7 +62,6 @@ def test_clowder_writer_and_explicit_reader(monkeypatch):
 @pytest.mark.parametrize(
     "name,value",
     [
-        ("REPORT_WRITE_BATCH_SIZE", "0"),
         ("REPORT_LOCK_TIMEOUT_MS", "-1"),
         ("REPORT_STATEMENT_TIMEOUT_MS", "oops"),
         ("REPLICA_RETRY_ATTEMPTS", "0"),
@@ -94,23 +93,26 @@ def test_deployment_wires_ro_and_writer_limits_to_both_jobs():
     assert app["spec"]["database"]["sharedDbAppName"] == "koku"
     for job in app["spec"]["jobs"]:
         env = {entry["name"]: entry for entry in job["podSpec"]["env"]}
-        assert env["DATABASE_RO_HOST"]["value"] == "${DATABASE_RO_HOST}"
+        for variable, key in (
+            ("DATABASE_RO_HOST", "db.host"),
+            ("DATABASE_RO_PORT", "db.port"),
+        ):
+            assert env[variable]["valueFrom"]["secretKeyRef"] == {
+                "name": "${KOKU_READ_ONLY_DB}",
+                "key": key,
+            }
+        assert "REPORT_WRITE_BATCH_SIZE" not in env
+        assert "DATABASE_RO_USER" not in env
+        assert "DATABASE_RO_PASSWORD" not in env
         for setting in (
-            "REPORT_WRITE_BATCH_SIZE",
             "REPORT_STATEMENT_TIMEOUT_MS",
             "REPORT_LOCK_TIMEOUT_MS",
             "REPLICA_RETRY_ATTEMPTS",
             "REPLICA_RETRY_DELAY",
         ):
             assert env[setting]["value"] == "${" + setting + "}"
-        assert (
-            env["DATABASE_RO_PASSWORD"]["valueFrom"]["secretKeyRef"][
-                "optional"
-            ]
-            is True
-        )
     parameter = next(
-        p for p in template["parameters"] if p["name"] == "DATABASE_RO_HOST"
+        p for p in template["parameters"] if p["name"] == "KOKU_READ_ONLY_DB"
     )
     assert parameter["required"] is True
 
