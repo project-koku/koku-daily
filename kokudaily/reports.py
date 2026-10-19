@@ -25,6 +25,17 @@ from pytz import UTC
 from sqlalchemy import text
 
 LOG = logging.getLogger(__name__)
+TOTALS_INPUTS = (
+    "__cust_cloud_cost_report",
+    "__cust_openshift_cost_report",
+    "__cust_openshift_infra_report",
+)
+
+
+class IncompleteReportInputs(RuntimeError):
+    """Required setup inputs are incomplete; delivery must not proceed."""
+
+
 USAGE_REPORT_PARAMS = {
     "start_time": datetime.datetime.now().replace(
         day=1,
@@ -481,7 +492,7 @@ def _run_setup_task(reader, task, cutoff):
 
 def _collect_datasets(reader, run_weeklys):
     datasets = {}
-    complete = True
+    completeness = {}
     cutoff = None
     for require in REQUIRES:
         for task in require["setup"]:
@@ -496,33 +507,47 @@ def _collect_datasets(reader, run_weeklys):
                     ).rows[0]["cutoff"]
                 table, rows, succeeded = _run_setup_task(reader, task, cutoff)
                 datasets[table] = rows
-                complete = complete and succeeded
+                completeness[table] = succeeded
             else:
+                totals_complete = all(
+                    completeness.get(name, False) for name in TOTALS_INPUTS
+                )
+                completeness["__customer_total_data"] = totals_complete
+                if not totals_complete:
+                    LOG.error(
+                        "Key metrics inputs incomplete: suppressing daily "
+                        "totals persistence"
+                    )
+                    continue
                 sql, params = bind_datasets(
                     _required_sql(task["file"]), datasets, DEFINITIONS
                 )
                 current = _read_rows(reader, sql, params).rows
-                if complete:
-                    write_totals(
-                        DB_ENGINE,
-                        _required_sql(
-                            "sql/key_metrics/cust_total_data_upsert.sql"
-                        ),
-                        current,
-                        Config.REPORT_STATEMENT_TIMEOUT_MS,
-                        Config.REPORT_LOCK_TIMEOUT_MS,
-                    )
-                else:
-                    LOG.error(
-                        "Reports incomplete: suppressing daily totals "
-                        "persistence"
-                    )
+                write_totals(
+                    DB_ENGINE,
+                    _required_sql(
+                        "sql/key_metrics/cust_total_data_upsert.sql"
+                    ),
+                    current,
+                    Config.REPORT_STATEMENT_TIMEOUT_MS,
+                    Config.REPORT_LOCK_TIMEOUT_MS,
+                )
+                if not all(completeness.values()):
+                    continue
                 history = _read_rows(
                     reader, "SELECT * FROM public.__customer_total_data"
                 ).rows
                 datasets["__customer_total_data"] = merge_history(
                     history, current
                 )
+    incomplete = sorted(
+        name for name, complete in completeness.items() if not complete
+    )
+    if incomplete:
+        raise IncompleteReportInputs(
+            "Report inputs incomplete; delivery blocked: "
+            + ", ".join(incomplete)
+        )
     return datasets
 
 

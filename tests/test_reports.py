@@ -167,6 +167,9 @@ def test_recovery_conflicts_retry_at_every_global_read(monkeypatch, tmp_path):
             [{"schema_name": "org1"}],
             [{"exists": 1}],
             [],
+            [],
+            [],
+            [],
             conflict(),
             [{"date": cutoff.date()}],
             conflict(),
@@ -205,6 +208,17 @@ def test_recovery_conflicts_retry_at_every_global_read(monkeypatch, tmp_path):
                         "frequency": "daily",
                         "per_schema_file": "sql/cust_tag_report_setup_schema.sql",
                     },
+                    *[
+                        {
+                            "frequency": "daily",
+                            "per_schema_file": "sql/key_metrics/" + filename,
+                        }
+                        for filename in (
+                            "cust_cloud_costs_data_setup_schema.sql",
+                            "cust_openshift_costs_data_setup_schema.sql",
+                            "cust_openshift_infra_data_setup_schema.sql",
+                        )
+                    ],
                     {
                         "frequency": "daily",
                         "file": "sql/key_metrics/cust_total_data_setup.sql",
@@ -216,7 +230,7 @@ def test_recovery_conflicts_retry_at_every_global_read(monkeypatch, tmp_path):
     result = reports.run_reports()
     assert result["test"]["test"]["data"] == [(2,)]
     assert reader.events.count("rollback") == 5
-    assert reader.events.count("close") == 11
+    assert reader.events.count("close") == 14
     assert writer.events.count("commit") == 1
     assert sleep.call_args_list == [((0.25,),)] * 5
     reader.dispose.assert_called_once_with()

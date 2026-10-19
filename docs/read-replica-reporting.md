@@ -62,14 +62,21 @@ must be finite and nonnegative. Cutoff, tenant discovery, totals aggregation,
 history and final report reads use the same bounded recovery retries. Each failed
 read transaction rolls back and releases its connection before the retry delay.
 Exhausting retries on these global reads fails the job; no empty result is
-substituted. Totals already committed before a later report failure remain saved. Only database errors whose code and server
-diagnostic identify a recovery conflict are retried. User cancellations and
-other SQL/connectivity failures propagate. A canceled schema publishes no rows
-until a complete read succeeds. A schema exhausting its retries is logged as
-incomplete, subsequent schemas continue, and aggregate daily persistence is
-suppressed to avoid replacing complete historical totals with partial inputs.
-Affected report output can be partial; operators must inspect the incomplete-run
-logs. Schemas absent before their query are logged and skipped as before.
+substituted. Only database errors whose code and server diagnostic identify a
+recovery conflict are retried. User cancellations and other SQL/connectivity
+failures propagate. A canceled schema contributes no rows until its read succeeds.
+A schema exhausting retries is logged as incomplete; remaining schemas are still
+scanned, and completeness is tracked separately for each setup dataset.
+
+Only cloud costs, OCP costs and OCP infrastructure inputs control daily totals
+persistence. If any is incomplete, the totals aggregation and upsert are skipped.
+Failures in tags or weekly node/cost-model inputs do not suppress an otherwise
+complete atomic totals write. However, any incomplete required setup causes
+`IncompleteReportInputs` before CSV generation, so `job.py` exits unsuccessfully
+without email, S3, Prometheus or Pushgateway delivery. Partial current totals are
+never overlaid onto historical values. Complete totals already committed before
+an unrelated input or later reporting failure remain saved. Schemas absent before
+their query are logged and skipped as before.
 
 All-customer monthly totals overlay this run's daily values onto historical rows
 read from RO. This avoids waiting for the new upserts to replay and prevents

@@ -325,20 +325,75 @@ def test_typed_intermediate_conversion_matches_postgres_insert(pg):
     ) == tuple(legacy)
 
 
-def test_exhausted_schema_retries_continue_but_never_persist_partial_totals(
-    pg, monkeypatch, tmp_path, caplog
+@pytest.mark.parametrize(
+    "failed_table,weekly,totals_should_commit",
+    [
+        ("reporting_ocptags_values", False, True),
+        ("cost_model", True, True),
+        ("reporting_ocpusagelineitem_daily_summary", True, True),
+        ("reporting_aws_cost_summary_p", False, False),
+        ("reporting_ocp_cost_summary_p", False, False),
+        ("reporting_ocp_pod_summary_by_node_p", False, False),
+    ],
+)
+def test_incomplete_inputs_block_delivery_and_scope_totals_write(
+    pg,
+    monkeypatch,
+    tmp_path,
+    caplog,
+    failed_table,
+    weekly,
+    totals_should_commit,
 ):
+    import logging
+    import runpy
+    from unittest.mock import Mock
+
+    import prometheus_client
+    from kokudaily import send
     from test_replica import conflict
 
     writer, reader = pg
     configure(monkeypatch, reader, writer, tmp_path)
-    monkeypatch.setattr(reports.Config, "WEEKLY_REPORT_SCHEDULED_DAY", None)
+    if not weekly:
+        monkeypatch.setattr(
+            reports.Config, "WEEKLY_REPORT_SCHEDULED_DAY", None
+        )
     monkeypatch.setattr(reports.Config, "REPLICA_RETRY_DELAY", 0)
+    monkeypatch.setattr(reports.Config, "EMAIL_GROUPS", {})
+    monkeypatch.setattr(reports.Config, "PROMETHEUS_PUSH_GATEWAY", "unused")
+    monkeypatch.setattr(
+        logging.getLogger(), "handlers", list(logging.getLogger().handlers)
+    )
+    monkeypatch.setattr(
+        logging.getLogger(), "level", logging.getLogger().level
+    )
+    deliveries = [Mock() for _ in range(5)]
+    for name, delivery in zip(
+        ("email", "s3", "prometheus", "create_zip_archive"), deliveries
+    ):
+        monkeypatch.setattr(send, name, delivery)
+    monkeypatch.setattr(prometheus_client, "push_to_gateway", deliveries[-1])
+    save_report = Mock(wraps=reports._save_report)
+    merge_history = Mock(wraps=reports.merge_history)
+    monkeypatch.setattr(reports, "_save_report", save_report)
+    monkeypatch.setattr(reports, "merge_history", merge_history)
     attempts = []
+    reads = []
     writes = []
+    with writer.connect() as con:
+        original_totals = con.execute(
+            text("SELECT * FROM public.__customer_total_data ORDER BY date")
+        ).all()
 
     def fail_schema(con, cursor, sql, params, context, many):
-        if "org1.reporting_ocptags_values" in sql:
+        reads.append(sql)
+        # cost_model is also read by daily OCP costs; fail only its weekly
+        # extraction query so the key-metrics inputs remain independent.
+        targeted_query = failed_table != "cost_model" or sql.startswith(
+            "WITH schema_rows (customer, cost_model_id"
+        )
+        if targeted_query and "org1." + failed_table in sql:
             attempts.append(sql)
             raise conflict()
 
@@ -348,13 +403,29 @@ def test_exhausted_schema_retries_continue_but_never_persist_partial_totals(
     event.listen(reader, "before_cursor_execute", fail_schema)
     event.listen(writer, "before_cursor_execute", record_write)
     try:
-        result = reports.run_reports()
-        rows = result["engineering"]["cust_tag_report"]["data_dicts"]
-        assert any(row["customer"] == "org2" for row in rows)
-        assert not any(row["customer"] == "org1" for row in rows)
+        with pytest.raises(reports.IncompleteReportInputs, match="incomplete"):
+            runpy.run_path("job.py", run_name="__main__")
         assert len(attempts) == 3
-        assert not writes
-        assert "suppressing daily totals" in caplog.text
+        assert any("org2." + failed_table in sql for sql in reads)
+        for delivery in deliveries:
+            delivery.assert_not_called()
+        save_report.assert_not_called()
+        merge_history.assert_not_called()
+        assert (
+            any(sql.startswith("INSERT") for sql in writes)
+            == totals_should_commit
+        )
+        with writer.connect() as con:
+            final_totals = con.execute(
+                text(
+                    "SELECT * FROM public.__customer_total_data ORDER BY date"
+                )
+            ).all()
+        if totals_should_commit:
+            assert len(final_totals) > len(original_totals)
+        else:
+            assert final_totals == original_totals
+            assert "suppressing daily totals" in caplog.text
     finally:
         event.remove(reader, "before_cursor_execute", fail_schema)
         event.remove(writer, "before_cursor_execute", record_write)
