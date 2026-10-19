@@ -11,10 +11,18 @@ from kokudaily.datasets import DEFINITIONS
 from kokudaily.datasets import SETUP_TABLES
 from kokudaily.engine import create_engine
 from kokudaily.engine import DB_ENGINE
-from kokudaily.replica import bind_datasets
-from kokudaily.replica import merge_history
 from kokudaily.replica import read_rows
-from kokudaily.replica import read_schema
+from kokudaily.replica import read_to_store
+from kokudaily.replica import is_recovery_conflict
+from kokudaily.setup_runner import render_schema_sql
+from kokudaily.staging import Store, ReportBundle, TupleRows, fields
+from kokudaily.local_reports import query as local_query
+from kokudaily.local_reports import (
+    TOTALS_SCHEMA,
+    CUSTOMERS_SQL,
+    ACTIVE_PROVIDERS_SQL,
+)
+from sqlalchemy.exc import DBAPIError
 from kokudaily.replica import retry_read
 from kokudaily.replica import write_totals
 from kokudaily.setup_runner import list_tenant_schemas
@@ -450,48 +458,73 @@ def _read_rows(reader, sql, params=None):
     )
 
 
-def _run_setup_task(reader, task, cutoff):
-    """Collect inputs with a separate RO transaction per schema."""
-    parameters = dict(task.get("sql_parameters") or {})
-    parameters["run_cutoff"] = cutoff
+def _stage_read(
+    reader, store, name, sql, params=None, schema=None, output=False
+):
+    return retry_read(
+        lambda: read_to_store(
+            reader, sql, store, name, params, schema, output
+        ),
+        attempts=Config.REPLICA_RETRY_ATTEMPTS,
+        delay=Config.REPLICA_RETRY_DELAY,
+    )
+
+
+def _run_setup_task(reader, task, cutoff, store):
+    """Stream each tenant into an atomic, retryable SQLite staging attempt."""
+    parameters = dict(task.get("sql_parameters") or {}, run_cutoff=cutoff)
+    # Discovery is streamed to disk as well; keep one ordinal per task.
+    name = SETUP_TABLES[task["per_schema_file"]]
+    discovery = "schemas_" + name
 
     def discover():
-        with reader.connect() as con:
-            with con.begin():
-                con.execute(text("SET TRANSACTION READ ONLY"))
-                return list_tenant_schemas(
-                    con,
-                    task.get("tenant_filter", TENANT_FILTER_ALL),
-                    parameters.get("provider_types"),
-                )
+        with store.attempt():
+            store.con.execute(f'CREATE TABLE "{discovery}" (schema_name TEXT)')
+            with reader.connect() as con:
+                with con.begin():
+                    con.execute(text("SET TRANSACTION READ ONLY"))
+                    for schema in list_tenant_schemas(
+                        con,
+                        task.get("tenant_filter", TENANT_FILTER_ALL),
+                        parameters.get("provider_types"),
+                        stream=True,
+                    ):
+                        store.con.execute(
+                            f'INSERT INTO "{discovery}" VALUES (?)', (schema,)
+                        )
 
-    schemas = retry_read(
+    retry_read(
         discover,
         attempts=Config.REPLICA_RETRY_ATTEMPTS,
         delay=Config.REPLICA_RETRY_DELAY,
     )
+    store.create(name, fields(DEFINITIONS[name]))
     sql = _required_sql(task["per_schema_file"])
-    # These names come from the checked-in task descriptors, never user input.
-    table = SETUP_TABLES[task["per_schema_file"]]
-    rows = []
     complete = True
-    for schema in schemas:
-        result = read_schema(
-            reader,
-            sql,
-            schema,
-            dict(parameters, customer=schema),
-            attempts=Config.REPLICA_RETRY_ATTEMPTS,
-            delay=Config.REPLICA_RETRY_DELAY,
-            check_exists=True,
-        )
-        rows.extend(result.rows)
-        complete = complete and result.complete
-    return table, rows, complete
+    for (schema,) in store.con.execute(
+        f'SELECT schema_name FROM "{discovery}" ORDER BY rowid'
+    ):
+        try:
+            _stage_read(
+                reader,
+                store,
+                name,
+                render_schema_sql(sql, schema),
+                dict(parameters, customer=schema),
+                schema=schema,
+            )
+        except DBAPIError as error:
+            if not is_recovery_conflict(error):
+                raise
+            LOG.error(
+                "Report inputs incomplete: exhausted recovery retries for %s",
+                schema,
+            )
+            complete = False
+    return name, complete
 
 
-def _collect_datasets(reader, run_weeklys):
-    datasets = {}
+def _collect_datasets(reader, run_weeklys, store):
     completeness = {}
     cutoff = None
     for require in REQUIRES:
@@ -505,8 +538,7 @@ def _collect_datasets(reader, run_weeklys):
                     cutoff = _read_rows(
                         reader, "SELECT clock_timestamp() AS cutoff"
                     ).rows[0]["cutoff"]
-                table, rows, succeeded = _run_setup_task(reader, task, cutoff)
-                datasets[table] = rows
+                table, succeeded = _run_setup_task(reader, task, cutoff, store)
                 completeness[table] = succeeded
             else:
                 totals_complete = all(
@@ -515,14 +547,12 @@ def _collect_datasets(reader, run_weeklys):
                 completeness["__customer_total_data"] = totals_complete
                 if not totals_complete:
                     LOG.error(
-                        "Key metrics inputs incomplete: suppressing daily "
-                        "totals persistence"
+                        "Key metrics inputs incomplete: suppressing daily totals persistence"
                     )
                     continue
-                sql, params = bind_datasets(
-                    _required_sql(task["file"]), datasets, DEFINITIONS
-                )
-                current = _read_rows(reader, sql, params).rows
+                _, current = local_query(store, "cust_total_data_setup.sql")
+                # There is one row per date, bounded by the reporting window.
+                current = list(current)
                 write_totals(
                     DB_ENGINE,
                     _required_sql(
@@ -534,12 +564,15 @@ def _collect_datasets(reader, run_weeklys):
                 )
                 if not all(completeness.values()):
                     continue
-                history = _read_rows(
-                    reader, "SELECT * FROM public.__customer_total_data"
-                ).rows
-                datasets["__customer_total_data"] = merge_history(
-                    history, current
+                store.create("__customer_total_data", TOTALS_SCHEMA)
+                _stage_read(
+                    reader,
+                    store,
+                    "__customer_total_data",
+                    "SELECT * FROM public.__customer_total_data",
                 )
+                # Current complete dates supersede lagging replica history.
+                store.overlay("__customer_total_data", current)
     incomplete = sorted(
         name for name, complete in completeness.items() if not complete
     )
@@ -548,26 +581,41 @@ def _collect_datasets(reader, run_weeklys):
             "Report inputs incomplete; delivery blocked: "
             + ", ".join(incomplete)
         )
-    return datasets
 
 
-def _save_report(report_name, result, temp_dir):
+def _stage_metadata(reader, store):
+    store.create(
+        "__customers",
+        {
+            "account_id": "text",
+            "org_id": "text",
+            "schema_name": "text",
+            "domain": "array",
+            "has_non_redhat": "integer",
+        },
+    )
+    _stage_read(reader, store, "__customers", CUSTOMERS_SQL)
+    store.create("__active_providers", {"uuid": "text"})
+    _stage_read(reader, store, "__active_providers", ACTIVE_PROVIDERS_SQL)
+
+
+def _save_report(report_name, rows, temp_dir):
     path = os.path.join(temp_dir, f"{report_name}.csv")
-    data = [tuple(row[key] for key in result.columns) for row in result.rows]
     with open(path, "w", newline="") as csv_file:
         writer = csv.writer(csv_file)
-        writer.writerow(result.columns)
-        writer.writerows(data)
+        writer.writerow(rows.columns)
+        for row in rows:
+            writer.writerow([row[key] for key in rows.columns])
     return {
-        "data": data,
-        "columns": result.columns,
+        "data": TupleRows(rows),
+        "columns": rows.columns,
         "file": path,
-        "data_dicts": result.rows,
+        "data_dicts": rows,
     }
 
 
 def run_reports(filter_target=None):
-    """Compute reports on RO; acquire RW only for final daily upserts."""
+    """Read on RO, process on disk, and write final totals atomically on RW."""
     today = datetime.datetime.now(datetime.timezone.utc)
     run_weeklys = Config.WEEKLY_REPORT_SCHEDULED_DAY == today.weekday()
     selected = dict(REPORTS)
@@ -575,12 +623,19 @@ def run_reports(filter_target=None):
         selected.update(WEEKLY_REPORTS)
     if Config.RUN_DAILY_REPORTS:
         selected.update(DAILY_REPORTS)
-    reader = create_engine(readonly=True)
+    directory = Config.REPORT_STAGING_DIR or gettempdir()
+    store = Store(directory)
+    reader = None
     try:
-        datasets = _collect_datasets(reader, run_weeklys)
-        report_data: dict[str | None, dict[str, dict[str, Any]]] = {}
-        temp_dir = os.path.join(gettempdir(), "reports")
-        os.makedirs(temp_dir, exist_ok=True)
+        reader = create_engine(readonly=True)
+        _collect_datasets(reader, run_weeklys, store)
+        if run_weeklys and any(
+            "per_schema_file" in task and task["frequency"] == "weekly"
+            for require in REQUIRES
+            for task in require["setup"]
+        ):
+            _stage_metadata(reader, store)
+        report_data = ReportBundle(store)
         for report_name, report in selected.items():
             namespace = report.get("namespace", Config.NAMESPACE)
             target = report.get("target", Config.NAMESPACE)
@@ -588,15 +643,29 @@ def run_reports(filter_target=None):
                 filter_target and target != filter_target
             ):
                 continue
-            sql, binds = bind_datasets(
-                _required_sql(report["file"]), datasets, DEFINITIONS
-            )
-            parameters = dict(report.get("sql_parameters") or {})
-            parameters.update(binds)
-            result = _read_rows(reader, sql, parameters)
+            sql = _required_sql(report["file"])
+            output_name = "output_" + report_name
+            if any(name in sql for name in store.schemas):
+                filename = os.path.basename(report["file"])
+                columns, result = local_query(store, filename)
+                with store.attempt():
+                    rows = store.output(output_name, columns, result)
+            else:
+                rows = _stage_read(
+                    reader,
+                    store,
+                    output_name,
+                    sql,
+                    report.get("sql_parameters"),
+                    output=True,
+                )
             report_data.setdefault(target, {})[report_name] = _save_report(
-                report_name, result, temp_dir
+                report_name, rows, store.directory.name
             )
         return report_data
+    except BaseException:
+        store.close()
+        raise
     finally:
-        reader.dispose()
+        if reader is not None:
+            reader.dispose()

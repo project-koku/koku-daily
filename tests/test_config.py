@@ -128,3 +128,17 @@ def test_touched_schedule_types_preserve_normalization_and_port_fallback(
     assert cfg.WEEKLY_REPORT_SCHEDULED_DAY == 6
     assert cfg.RUN_DAILY_REPORTS is True
     assert cfg.APP_PORT == 8080
+
+
+def test_explicit_staging_directory_controls_python_and_sqlite_temp(
+    monkeypatch, tmp_path
+):
+    import os
+
+    monkeypatch.setenv("REPORT_STAGING_DIR", str(tmp_path))
+    monkeypatch.setenv("TMPDIR", "original-python-temp")
+    monkeypatch.setenv("SQLITE_TMPDIR", "original-sqlite-temp")
+    cfg = importlib.reload(config).Config
+    assert cfg.REPORT_STAGING_DIR == str(tmp_path)
+    assert os.environ["TMPDIR"] == str(tmp_path)
+    assert os.environ["SQLITE_TMPDIR"] == str(tmp_path)

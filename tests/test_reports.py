@@ -139,9 +139,21 @@ def test_active_setup_captures_one_cutoff_for_all_tenants_and_reports(
             }
         ],
     )
-    datasets = reports._collect_datasets(reader, run_weeklys=True)
-    assert len(datasets["__cust_tag_report"]) == 2
-    assert datasets["__cust_node_report"] == [node_row]
+    from kokudaily.staging import Store
+
+    with Store() as store:
+        reports._collect_datasets(reader, run_weeklys=True, store=store)
+        assert (
+            store.con.execute(
+                "SELECT count(*) FROM __cust_tag_report"
+            ).fetchone()[0]
+            == 2
+        )
+        _, rows = store.select(
+            "SELECT * FROM __cust_node_report",
+            store.schemas["__cust_node_report"],
+        )
+        assert list(rows) == [node_row]
     calls = [event for event in reader.events if isinstance(event, tuple)]
     assert sum("clock_timestamp()" in sql for sql, _ in calls) == 1
     assert [
@@ -170,8 +182,6 @@ def test_recovery_conflicts_retry_at_every_global_read(monkeypatch, tmp_path):
             [],
             [],
             [],
-            conflict(),
-            [{"date": cutoff.date()}],
             conflict(),
             [],
             conflict(),
@@ -229,8 +239,51 @@ def test_recovery_conflicts_retry_at_every_global_read(monkeypatch, tmp_path):
     )
     result = reports.run_reports()
     assert result["test"]["test"]["data"] == [(2,)]
-    assert reader.events.count("rollback") == 5
-    assert reader.events.count("close") == 14
-    assert writer.events.count("commit") == 1
-    assert sleep.call_args_list == [((0.25,),)] * 5
+    assert reader.events.count("rollback") == 4
+    assert reader.events.count("close") == 12
+    assert writer.events.count("commit") == 0
+    assert sleep.call_args_list == [((0.25,),)] * 4
     reader.dispose.assert_called_once_with()
+
+
+def test_unrelated_tenant_error_is_not_retried_and_cleans_scratch(
+    monkeypatch, tmp_path
+):
+    from datetime import datetime, timezone
+    import pytest
+    from test_replica import conflict
+    from sqlalchemy.exc import DBAPIError
+
+    error = conflict("57014", "canceling statement due to user request")
+    reader = Engine(
+        [
+            [{"cutoff": datetime.now(timezone.utc)}],
+            [{"schema_name": "org1"}],
+            [{"exists": 1}],
+            error,
+        ]
+    )
+    reader.dispose = Mock()
+    monkeypatch.setattr(reports, "create_engine", lambda readonly: reader)
+    monkeypatch.setattr(reports, "gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr(reports.Config, "RUN_DAILY_REPORTS", True)
+    monkeypatch.setattr(reports.Config, "WEEKLY_REPORT_SCHEDULED_DAY", None)
+    monkeypatch.setattr(
+        reports,
+        "REQUIRES",
+        [
+            {
+                "setup": [
+                    {
+                        "frequency": "daily",
+                        "per_schema_file": "sql/cust_tag_report_setup_schema.sql",
+                    }
+                ]
+            }
+        ],
+    )
+    with pytest.raises(DBAPIError) as caught:
+        reports.run_reports()
+    assert caught.value is error
+    assert reader.events.count("rollback") == 1
+    assert not list(tmp_path.iterdir())

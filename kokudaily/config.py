@@ -92,6 +92,11 @@ class Config:
     )
     REPORT_LOCK_TIMEOUT_MS = positive_setting("REPORT_LOCK_TIMEOUT_MS", 1000)
 
+    REPORT_STAGING_DIR = os.getenv("REPORT_STAGING_DIR") or None
+    if REPORT_STAGING_DIR:
+        os.environ["TMPDIR"] = REPORT_STAGING_DIR
+        os.environ["SQLITE_TMPDIR"] = REPORT_STAGING_DIR
+
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     SQLALCHEMY_POOL_SIZE = 10

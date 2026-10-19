@@ -1,13 +1,22 @@
 # Read replica reporting
 
-Tenant discovery, tenant scans, metadata joins, and report aggregation use the
-RO engine. Each schema's complete result is fetched inside its own read-only
-transaction; the connection is returned before the next schema or retry delay.
-Python retains intermediate rows. PostgreSQL on RO performs final joins and
-aggregations using typed, bound JSON recordsets; no temporary tables are created.
-Explicit casts preserve the old staging-table rounding and column types. Cost-model
-`rates` and `markup` travel through Python as nullable JSON text and are cast
-back to JSONB on RO, preserving SQL NULL, JSON null and exact JSON numbers.
+Tenant discovery, tenant scans, metadata reads, and ordinary report queries use
+RO PostgreSQL transactions. Server-side cursors fetch at most 500 rows per batch
+into a disposable SQLite database on the pod's writable filesystem. Each tenant
+attempt has its own SQLite savepoint: a failed read leaves no staged rows before
+retrying. The PostgreSQL transaction closes before any retry delay.
+
+Reports over staged data use local SQLite queries, with exact Decimal sum/max
+functions instead of SQLite floating-point arithmetic. Numeric inputs use TEXT
+affinity; a schema codec restores Decimal values and dates without global adapter
+registrations. Cost-model JSON remains nullable raw text, preserving SQL NULL,
+JSON null and exact JSON numbers. Source-query casts still preserve the former
+PostgreSQL temporary-table rounding and column types. The parity suite compares
+local report queries with the original PostgreSQL implementation.
+
+No PostgreSQL temporary tables or whole-dataset JSON parameters are used. Output
+rows stay on disk, CSV writing and Parquet conversion stream, and `job.py` closes
+the report bundle after delivery (including failure) to remove its scratch files.
 
 The RW engine is acquired only to upsert final rows into the existing
 `public.__customer_total_data`. No table migration is required. All calculated dates
@@ -56,10 +65,11 @@ wiring.
 | REPLICA_RETRY_DELAY | 1 | Seconds between attempts, outside any transaction |
 | REPORT_STATEMENT_TIMEOUT_MS | 5000 | Transaction-local RW statement timeout |
 | REPORT_LOCK_TIMEOUT_MS | 1000 | Transaction-local RW lock timeout |
+| REPORT_STAGING_DIR | Python temporary directory, normally `/tmp` | Parent of a unique disposable run directory |
 
 Retry attempts, ports, and timeouts must be positive integers; delay
-must be finite and nonnegative. Cutoff, tenant discovery, totals aggregation,
-history and final report reads use the same bounded recovery retries. Each failed
+must be finite and nonnegative. Cutoff, tenant discovery, metadata, history and
+direct report reads use the same bounded recovery retries. Each failed
 read transaction rolls back and releases its connection before the retry delay.
 Exhausting retries on these global reads fails the job; no empty result is
 substituted. Only database errors whose code and server diagnostic identify a
@@ -82,8 +92,27 @@ All-customer monthly totals overlay this run's daily values onto historical rows
 read from RO. This avoids waiting for the new upserts to replay and prevents
 double counting stale values for the same dates. It does not provide a single
 snapshot across all tenants or hide unrelated replication lag in historical
-data. The intermediate datasets occupy Python memory; measure the job with
-representative tenant counts before production rollout.
+data.
+
+## Scratch storage and memory
+
+Default container `/tmp` is sufficient; no PVC, additional volume, or deployment
+change is required. `REPORT_STAGING_DIR` optionally selects another existing,
+writable parent and sets `TMPDIR` and `SQLITE_TMPDIR` before SQLite work. An invalid
+configured directory fails rather than falling back. Run directories are unique;
+abandoned databases are never reused. SQLite uses a 16 MiB page-cache target,
+file-backed temporary work, cache spilling, DELETE journaling and exclusive
+locking. Durability syncs are disabled because scratch is rebuilt after failure;
+transaction rollback remains enabled. Disk-full and other SQLite errors fail the
+job and block delivery; previously committed valid totals may remain.
+
+The page-cache target is not a pod memory cap. Linux file cache also counts toward
+cgroup memory and can be reclaimed. Email attachment encoding and the Prometheus
+registry retain their existing memory costs. Production capacity must account for
+SQLite, its journal and sort files, CSV, Parquet, ZIP and other container files;
+the writable layer is node-local ephemeral storage, subject to available node
+capacity and disk-pressure eviction when no storage request/limit is configured.
+Synthetic pod measurements are recorded separately from real tenant sizing.
 
 ## Local checks
 

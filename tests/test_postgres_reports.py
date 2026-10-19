@@ -48,6 +48,11 @@ def legacy_sql(name):
 
 
 def configure(monkeypatch, reader, writer, tmp_path):
+    from kokudaily import config
+
+    # Configuration-reload tests replace the class object. A real job imports
+    # one shared class, so keep the CLI and reports module aligned here too.
+    monkeypatch.setattr(config, "Config", reports.Config)
     monkeypatch.setattr(reports, "DB_ENGINE", writer)
     monkeypatch.setattr(reports, "create_engine", lambda readonly: reader)
     monkeypatch.setattr(reports.Config, "NAMESPACE", "hccm-prod")
@@ -206,37 +211,40 @@ def test_real_recovery_conflict_rolls_back_and_retry_succeeds(pg, read_kind):
     results = []
     errors = []
     attempts = []
+    backend = []
 
     def before(con, cursor, sql, params, context, many):
         if "recovery_probe" in sql:
             attempts.append(sql)
+            backend.append(con.connection.driver_connection.get_backend_pid())
             started.set()
 
     event.listen(reader, "before_cursor_execute", before)
 
     def execute():
         try:
-            if read_kind == "tenant":
-                result = read_schema(
-                    reader,
-                    "SELECT pg_sleep(3), key "
-                    "FROM {schema}.reporting_awstags_values "
-                    "/* recovery_probe */",
-                    "org1",
-                    {},
-                    delay=0,
-                )
-            else:
-                result = retry_read(
-                    lambda: read_rows(
+            from kokudaily.staging import Store
+            from kokudaily.replica import read_to_store
+
+            with Store() as store:
+                store.create("probe", {"key": "text"})
+                retry_read(
+                    lambda: read_to_store(
                         reader,
-                        "SELECT pg_sleep(3), key "
-                        "FROM org1.reporting_awstags_values "
-                        "/* recovery_probe */",
+                        "SELECT pg_sleep(3), key FROM org1.reporting_awstags_values /* recovery_probe */",
+                        store,
+                        "probe",
+                        schema="org1" if read_kind == "tenant" else None,
                     ),
                     delay=0,
                 )
-            results.append(result)
+                results.append(
+                    list(
+                        store.select("SELECT key FROM probe", {"key": "text"})[
+                            1
+                        ]
+                    )
+                )
         except Exception as error:
             errors.append(error)
 
@@ -244,7 +252,21 @@ def test_real_recovery_conflict_rolls_back_and_retry_succeeds(pg, read_kind):
     worker.start()
     try:
         assert started.wait(5)
-        time.sleep(0.2)
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            with reader.connect() as con:
+                sleeping = con.execute(
+                    text(
+                        "SELECT state = 'active' AND wait_event = 'PgSleep' "
+                        "FROM pg_stat_activity WHERE pid = :pid"
+                    ),
+                    {"pid": backend[0]},
+                ).scalar_one_or_none()
+            if sleeping:
+                break
+            time.sleep(0.02)
+        else:
+            raise AssertionError("Standby query did not reach active pg_sleep")
         with writer.begin() as con:
             con.execute(
                 text(
@@ -255,7 +277,7 @@ def test_real_recovery_conflict_rolls_back_and_retry_succeeds(pg, read_kind):
         worker.join(12)
         assert not worker.is_alive()
         assert not errors
-        assert results[0].complete and results[0].rows[0]["key"] == "x"
+        assert results[0] == [{"key": "x"}]
         assert len(attempts) == 2
     finally:
         worker.join(12)
@@ -375,9 +397,7 @@ def test_incomplete_inputs_block_delivery_and_scope_totals_write(
         monkeypatch.setattr(send, name, delivery)
     monkeypatch.setattr(prometheus_client, "push_to_gateway", deliveries[-1])
     save_report = Mock(wraps=reports._save_report)
-    merge_history = Mock(wraps=reports.merge_history)
     monkeypatch.setattr(reports, "_save_report", save_report)
-    monkeypatch.setattr(reports, "merge_history", merge_history)
     attempts = []
     reads = []
     writes = []
@@ -410,7 +430,6 @@ def test_incomplete_inputs_block_delivery_and_scope_totals_write(
         for delivery in deliveries:
             delivery.assert_not_called()
         save_report.assert_not_called()
-        merge_history.assert_not_called()
         assert (
             any(sql.startswith("INSERT") for sql in writes)
             == totals_should_commit
@@ -542,12 +561,78 @@ def test_cost_model_json_roundtrip_matches_legacy(pg, json_value):
         "org1",
         {"customer": "org1"},
     ).rows
-    datasets = {"__cust_cost_model_report": rows}
-    for sql, expected in (
-        (probe, expected_values),
-        (count_sql, expected_counts),
-    ):
-        bound_sql, params = reports.bind_datasets(
-            sql, datasets, reports.DEFINITIONS
+    from kokudaily.staging import Store, fields
+    from kokudaily.local_reports import query
+
+    with Store() as store:
+        store.create(
+            "__cust_cost_model_report",
+            fields(reports.DEFINITIONS["__cust_cost_model_report"]),
         )
-        assert read_rows(reader, bound_sql, params).rows == expected
+        with store.attempt():
+            store.insert("__cust_cost_model_report", rows)
+        values = [
+            {
+                "rates_sql_null": row["rates"] is None,
+                "markup_sql_null": row["markup"] is None,
+                "rates_json": row["rates"],
+                "markup_json": row["markup"],
+            }
+            for row in rows
+        ]
+        assert values == expected_values
+        _, roundtrip = store.select(
+            "SELECT * FROM __cust_cost_model_report ORDER BY cost_model_id",
+            store.schemas["__cust_cost_model_report"],
+        )
+        assert list(roundtrip) == rows
+        reports._stage_metadata(reader, store)
+        _, counts = query(store, "cust_cost_model_report_counts.sql")
+        assert list(counts) == expected_counts
+
+
+@pytest.mark.parametrize("delivery_fails", [False, True])
+def test_real_job_cleans_reports_after_delivery(
+    pg, monkeypatch, tmp_path, delivery_fails
+):
+    import logging
+    import runpy
+    from unittest.mock import Mock
+    from kokudaily import send
+
+    writer, reader = pg
+    configure(monkeypatch, reader, writer, tmp_path)
+    monkeypatch.setattr(reports.Config, "EMAIL_GROUPS", {})
+    monkeypatch.setattr(reports.Config, "PROMETHEUS_PUSH_GATEWAY", None)
+    monkeypatch.setattr(
+        logging.getLogger(), "handlers", list(logging.getLogger().handlers)
+    )
+    monkeypatch.setattr(
+        logging.getLogger(), "level", logging.getLogger().level
+    )
+    files = []
+
+    def observe(target, name, **report):
+        path = Path(report["file"])
+        assert path.exists()
+        assert len(report["data"]) == len(report["data_dicts"])
+        assert list(report["data_dicts"]) == list(report["data_dicts"])
+        files.append(path)
+
+    monkeypatch.setattr(send, "s3", observe)
+    monkeypatch.setattr(send, "prometheus", Mock())
+    delivery = Mock(
+        side_effect=RuntimeError("synthetic delivery failure")
+        if delivery_fails
+        else None
+    )
+    monkeypatch.setattr(send, "email", delivery)
+    if delivery_fails:
+        with pytest.raises(RuntimeError, match="synthetic delivery failure"):
+            runpy.run_path("job.py", run_name="__main__")
+    else:
+        runpy.run_path("job.py", run_name="__main__")
+    assert files
+    assert all(not path.exists() for path in files)
+    assert not list(tmp_path.glob("koku-daily-*"))
+    assert delivery.called

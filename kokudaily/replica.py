@@ -1,17 +1,13 @@
 """Short read-only transactions and bounded final writes for reporting."""
 
-import json
 import logging
 import math
 import re
 import time
 from dataclasses import dataclass
-from datetime import date
-from decimal import Decimal
 from typing import Any
 from typing import Callable
 from typing import TypeVar
-from uuid import UUID
 
 from kokudaily.setup_runner import render_schema_sql
 from kokudaily.setup_runner import validate_schema_name
@@ -125,70 +121,6 @@ def read_schema(
     return ReportRows([], [], complete=False)
 
 
-def merge_history(history: Rows, current: Rows) -> Rows:
-    """Overlay this run's daily totals without waiting for WAL replay."""
-    merged = {row["date"]: row for row in history}
-    merged.update({row["date"]: row for row in current})
-    return [merged[day] for day in sorted(merged)]
-
-
-def _json_value(value: Any) -> str:
-    if isinstance(value, (Decimal, UUID)):
-        return str(value)
-    if isinstance(value, date):
-        return value.isoformat()
-    raise TypeError(f"Unsupported report value type: {type(value).__name__}")
-
-
-def bind_datasets(
-    sql: str, datasets: dict[str, Rows], definitions: dict[str, str]
-) -> tuple[str, dict]:
-    """Supply Python intermediates as typed read-only relations on RO."""
-    relations: list[str] = []
-    params = {}
-    for name, rows in datasets.items():
-        if re.search(r"\b" + re.escape(name) + r"\b", sql):
-            parameter = f"dataset_{len(relations)}"
-            projection = "*"
-            if name == "__customer_total_data":
-                relation = (
-                    "jsonb_populate_recordset("
-                    "NULL::public.__customer_total_data, "
-                    f"CAST(:{parameter} AS jsonb))"
-                )
-            else:
-                definition = definitions[name]
-                if name == "__cust_cost_model_report":
-                    # Carry JSON as text so the driver cannot collapse JSON null
-                    # into SQL NULL or round JSON numbers through Python floats.
-                    definition = definition.replace(
-                        "rates jsonb", "rates text"
-                    ).replace("markup jsonb", "markup text")
-                    projection = (
-                        "customer, cost_model_id, source_type, "
-                        "created_timestamp, updated_timestamp, "
-                        "rates::jsonb AS rates, markup::jsonb AS markup, "
-                        "distribution, cost_model_map_id, provider_id, cluster_id"
-                    )
-                relation = (
-                    f"jsonb_to_recordset(CAST(:{parameter} AS jsonb)) "
-                    f"AS data({definition})"
-                )
-            relations.append(
-                f"{name} AS (SELECT {projection} FROM {relation})"
-            )
-            params[parameter] = json.dumps(rows, default=_json_value)
-    if relations:
-        sql = (
-            "WITH "
-            + ", ".join(relations)
-            + " SELECT * FROM (\n"
-            + sql.rstrip().rstrip(";")
-            + "\n) AS report"
-        )
-    return sql, params
-
-
 def write_totals(
     engine: Any,
     sql: str,
@@ -234,3 +166,35 @@ def _totals_values(sql: str, rows: Rows) -> tuple[str, dict]:
         )
     statement = sql[: match.start(1)] + ", ".join(values) + sql[match.end(1) :]
     return statement, parameters
+
+
+def read_to_store(
+    engine, sql, store, name, params=None, schema=None, output=False
+):
+    """Stage a complete streamed RO attempt; rollback its disk rows on error."""
+    with store.attempt():
+        with engine.connect() as con:
+            with con.begin():
+                con.execute(text("SET TRANSACTION READ ONLY"))
+                if schema is not None:
+                    exists = con.execute(
+                        text(
+                            "SELECT 1 FROM pg_namespace WHERE nspname = :schema"
+                        ),
+                        {"schema": schema},
+                    ).first()
+                    if exists is None:
+                        LOG.warning("Schema %s disappeared; skipping.", schema)
+                        return []
+                result = con.execution_options(
+                    stream_results=True, yield_per=500
+                ).execute(text(sql), params or {})
+                try:
+                    columns = list(result.keys())
+                    rows = (dict(row) for row in result.mappings())
+                    if output:
+                        return store.output(name, columns, rows)
+                    store.insert(name, rows)
+                    return columns
+                finally:
+                    result.close()

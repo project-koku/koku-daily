@@ -1,7 +1,6 @@
 """Behavioral contracts for replica computation and bounded final writes."""
 
 from contextlib import contextmanager
-from datetime import date
 from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -14,6 +13,12 @@ from sqlalchemy.exc import DBAPIError
 class Result:
     def __init__(self, rows):
         self.rows = rows
+
+    def first(self):
+        return tuple(self.rows[0].values()) if self.rows else None
+
+    def close(self):
+        pass
 
     def keys(self):
         return list(self.rows[0]) if self.rows else []
@@ -52,6 +57,9 @@ class Engine:
             self.events.append("commit")
         finally:
             self.active = False
+
+    def execution_options(self, **kwargs):
+        return self
 
     def execute(self, sql, params=None):
         self.events.append((str(sql), params))
@@ -152,33 +160,6 @@ def test_unsafe_schema_rejected_before_connect():
     assert engine.events == []
 
 
-def test_history_overlay_replaces_dates_without_losing_precision():
-    old = [
-        {"date": date(2026, 1, 1), "amount": None},
-        {"date": date(2026, 2, 1), "amount": Decimal("1.11")},
-    ]
-    current = [
-        {
-            "date": date(2026, 2, 1),
-            "amount": Decimal("12345678901234567890.12"),
-        }
-    ]
-    assert replica.merge_history(old, current) == [old[0], current[0]]
-    assert old[1]["amount"] == Decimal("1.11")
-
-
-def test_intermediates_are_bound_and_preserve_numeric_and_null():
-    sql, params = replica.bind_datasets(
-        "SELECT * FROM __test",
-        {"__test": [{"amount": Decimal("1.23"), "other": None}]},
-        {"__test": "amount numeric(33, 2), other text"},
-    )
-    assert "jsonb_to_recordset" in sql
-    assert "1.23" not in sql
-    assert '"1.23"' in params["dataset_0"]
-    assert "null" in params["dataset_0"]
-
-
 def test_all_final_totals_commit_once_with_local_timeouts():
     engine = Engine([[], [], []])
     rows = [{"date": day} for day in range(201)]
@@ -266,34 +247,6 @@ def test_malformed_totals_upsert_rolls_back():
             {"timeout": "1000ms"},
         ),
         "rollback",
-    ]
-
-
-def test_intermediate_serialization_rejects_unsupported_types_without_repr():
-    with pytest.raises(
-        TypeError, match="Unsupported report value type: object"
-    ):
-        replica.bind_datasets(
-            "SELECT * FROM __test",
-            {"__test": [{"value": object()}]},
-            {"__test": "value text"},
-        )
-
-
-def test_intermediate_uuid_and_timestamp_round_trip():
-    import json
-    from datetime import datetime, timezone
-    from uuid import UUID
-
-    value = UUID("00000000-0000-0000-0000-000000000001")
-    timestamp = datetime(2026, 1, 1, tzinfo=timezone.utc)
-    _, parameters = replica.bind_datasets(
-        "SELECT * FROM __test",
-        {"__test": [{"id": value, "created": timestamp}]},
-        {"__test": "id uuid, created timestamptz"},
-    )
-    assert json.loads(parameters["dataset_0"]) == [
-        {"id": str(value), "created": timestamp.isoformat()}
     ]
 
 

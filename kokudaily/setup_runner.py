@@ -39,7 +39,8 @@ def list_tenant_schemas(
     con,
     tenant_filter: str = TENANT_FILTER_ALL,
     provider_types: Sequence[str] | None = None,
-) -> list[str]:
+    stream: bool = False,
+) -> Iterable[str]:
     """List tenant schemas using the same filters as the former DO loops."""
     params: dict = {}
     sql = """
@@ -78,6 +79,19 @@ def list_tenant_schemas(
     else:
         stmt = text(sql)
 
+    if stream:
+        result = con.execution_options(
+            stream_results=True, yield_per=500
+        ).execute(stmt, params)
+
+        def iterate():
+            try:
+                for row in result:
+                    yield validate_schema_name(row[0])
+            finally:
+                result.close()
+
+        return iterate()
     rows = con.execute(stmt, params)
     schemas = [validate_schema_name(row[0]) for row in rows]
     LOG.info(

@@ -25,31 +25,30 @@ LOG = logging.getLogger(__name__)
 
 LOG.info("Starting report job.")
 
-report_data = run_reports()
+with run_reports() as report_data:
+    for target, report_dict in report_data.items():
+        report_files = []
+        recipients = Config.EMAIL_GROUPS.get(target)
+        for report_name, report in report_dict.items():
+            path = report.get("file")
+            if path:
+                report_files.append(path)
+            prometheus(target, report_name, **report)
+            s3(target, report_name, **report)
+        zip_file_path = create_zip_archive(report_files, "koku_metrics.zip")
+        if zip_file_path:
+            LOG.info("Proceeding to email the compressed zip file.")
+            email(recipients, attachments=[zip_file_path], target=target)
+        else:
+            LOG.error(
+                "Skipping email because the zip archive could not be created."
+            )
 
-for target, report_dict in report_data.items():
-    report_files = []
-    recipients = Config.EMAIL_GROUPS.get(target)
-    for report_name, report in report_dict.items():
-        path = report.get("file")
-        if path:
-            report_files.append(path)
-        prometheus(target, report_name, **report)
-        s3(target, report_name, **report)
-    zip_file_path = create_zip_archive(report_files, "koku_metrics.zip")
-    if zip_file_path:
-        LOG.info("Proceeding to email the compressed zip file.")
-        email(recipients, attachments=[zip_file_path], target=target)
-    else:
-        LOG.error(
-            "Skipping email because the zip archive could not be created."
-        )
-
-    if Config.PROMETHEUS_PUSH_GATEWAY:
-        push_to_gateway(
-            Config.PROMETHEUS_PUSH_GATEWAY,
-            job="cost_metrics",
-            registry=REGISTRY,
-        )
+        if Config.PROMETHEUS_PUSH_GATEWAY:
+            push_to_gateway(
+                Config.PROMETHEUS_PUSH_GATEWAY,
+                job="cost_metrics",
+                registry=REGISTRY,
+            )
 
 LOG.info("Completed report job.")
