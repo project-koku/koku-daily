@@ -421,3 +421,62 @@ def test_failure_after_first_100_dates_leaves_all_totals_unchanged(pg):
             ).scalar_one()
             == 1
         )
+
+
+@pytest.mark.parametrize(
+    "json_value",
+    [
+        None,
+        "null",
+        "{}",
+        "[]",
+        '{"tag_rates":null,"value":123456789.1234567891}',
+        '[{"tag_rates":{"value":"1.25"}}]',
+        '"null"',
+    ],
+)
+def test_cost_model_json_roundtrip_matches_legacy(pg, json_value):
+    writer, reader = pg
+    setup = "cust_cost_model_report_setup_schema.sql"
+    probe = (
+        "SELECT rates IS NULL AS rates_sql_null, "
+        "markup IS NULL AS markup_sql_null, "
+        "rates::text AS rates_json, markup::text AS markup_json "
+        "FROM __cust_cost_model_report ORDER BY cost_model_id"
+    )
+    count_sql = reports._required_sql("sql/cust_cost_model_report_counts.sql")
+    with writer.begin() as con:
+        con.execute(
+            text(
+                "UPDATE org1.cost_model SET source_type='AWS', "
+                "rates=CAST(:value AS jsonb), markup=CAST(:value AS jsonb)"
+            ),
+            {"value": json_value},
+        )
+        con.execute(text(legacy_sql("cust_cost_model_report_setup.sql")))
+        con.execute(
+            text(render_schema_sql(legacy_sql(setup), "org1")),
+            {"customer": "org1"},
+        )
+        expected_values = [
+            dict(row) for row in con.execute(text(probe)).mappings()
+        ]
+        expected_counts = [
+            dict(row) for row in con.execute(text(count_sql)).mappings()
+        ]
+    wait_replay(writer, reader)
+    rows = read_schema(
+        reader,
+        reports._required_sql("sql/" + setup),
+        "org1",
+        {"customer": "org1"},
+    ).rows
+    datasets = {"__cust_cost_model_report": rows}
+    for sql, expected in (
+        (probe, expected_values),
+        (count_sql, expected_counts),
+    ):
+        bound_sql, params = reports.bind_datasets(
+            sql, datasets, reports.DEFINITIONS
+        )
+        assert read_rows(reader, bound_sql, params).rows == expected

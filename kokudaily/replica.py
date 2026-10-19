@@ -149,6 +149,7 @@ def bind_datasets(
     for name, rows in datasets.items():
         if re.search(r"\b" + re.escape(name) + r"\b", sql):
             parameter = f"dataset_{len(relations)}"
+            projection = "*"
             if name == "__customer_total_data":
                 relation = (
                     "jsonb_populate_recordset("
@@ -156,11 +157,26 @@ def bind_datasets(
                     f"CAST(:{parameter} AS jsonb))"
                 )
             else:
+                definition = definitions[name]
+                if name == "__cust_cost_model_report":
+                    # Carry JSON as text so the driver cannot collapse JSON null
+                    # into SQL NULL or round JSON numbers through Python floats.
+                    definition = definition.replace(
+                        "rates jsonb", "rates text"
+                    ).replace("markup jsonb", "markup text")
+                    projection = (
+                        "customer, cost_model_id, source_type, "
+                        "created_timestamp, updated_timestamp, "
+                        "rates::jsonb AS rates, markup::jsonb AS markup, "
+                        "distribution, cost_model_map_id, provider_id, cluster_id"
+                    )
                 relation = (
                     f"jsonb_to_recordset(CAST(:{parameter} AS jsonb)) "
-                    f"AS data({definitions[name]})"
+                    f"AS data({definition})"
                 )
-            relations.append(f"{name} AS (SELECT * FROM {relation})")
+            relations.append(
+                f"{name} AS (SELECT {projection} FROM {relation})"
+            )
             params[parameter] = json.dumps(rows, default=_json_value)
     if relations:
         sql = (

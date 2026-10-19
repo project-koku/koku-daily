@@ -5,7 +5,9 @@ RO engine. Each schema's complete result is fetched inside its own read-only
 transaction; the connection is returned before the next schema or retry delay.
 Python retains intermediate rows. PostgreSQL on RO performs final joins and
 aggregations using typed, bound JSON recordsets; no temporary tables are created.
-Explicit casts preserve the old staging-table rounding and column types.
+Explicit casts preserve the old staging-table rounding and column types. Cost-model
+`rates` and `markup` travel through Python as nullable JSON text and are cast
+back to JSONB on RO, preserving SQL NULL, JSON null and exact JSON numbers.
 
 The RW engine is acquired only to upsert final rows into the existing
 `public.__customer_total_data`. No table migration is required. All calculated dates
