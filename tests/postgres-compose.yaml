@@ -1,0 +1,43 @@
+name: koku-daily-cost8395
+services:
+  primary:
+    image: postgres:16.13
+    environment:
+      POSTGRES_PASSWORD: local-test-only
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "127.0.0.1:25435:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    entrypoint:
+      - bash
+      - -ec
+      - |
+        printf 'local all all trust\nhost all all all trust\nhost replication all all trust\n' > /tmp/test-hba
+        exec docker-entrypoint.sh postgres -c wal_level=replica -c max_wal_senders=5 -c hba_file=/tmp/test-hba
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U postgres]
+      interval: 1s
+      timeout: 5s
+      retries: 60
+  standby:
+    image: postgres:16.13
+    user: postgres
+    depends_on:
+      primary:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:25436:5432"
+    tmpfs:
+      - /var/lib/postgresql/data:uid=999,gid=999,mode=0700
+    entrypoint:
+      - bash
+      - -ec
+      - |
+        pg_basebackup -h primary -U postgres -D /var/lib/postgresql/data -R -X stream
+        exec postgres -c hot_standby=on -c hot_standby_feedback=on -c max_standby_streaming_delay=1s
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U postgres]
+      interval: 1s
+      timeout: 5s
+      retries: 60

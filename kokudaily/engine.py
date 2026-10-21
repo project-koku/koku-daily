@@ -1,4 +1,5 @@
 """SQLAlchemy database engine creation."""
+
 import os
 
 import sqlalchemy
@@ -37,7 +38,7 @@ def _create_engine_kwargs():
     return kwargs, cert_file
 
 
-def create_engine():
+def create_engine(readonly=False):
     """Create a database engine to manage DB connections.
 
     Args:
@@ -47,7 +48,21 @@ def create_engine():
         (sqlalchemy.sql.schema.MetaData): "SQLAlchemy engine metadata"
     """
     kwargs, _ = _create_engine_kwargs()
-    return sqlalchemy.create_engine(Config.SQLALCHEMY_DATABASE_URI, **kwargs)
+    url = Config.SQLALCHEMY_DATABASE_URI
+    if readonly:
+        if not Config.RO_DB_HOST:
+            raise ValueError(
+                "DATABASE_RO_HOST is required; RW fallback is forbidden"
+            )
+        url = sqlalchemy.engine.URL.create(
+            Config.DB_ENGINE,
+            username=Config.RO_DB_USER,
+            password=Config.RO_DB_PASSWORD,
+            host=Config.RO_DB_HOST,
+            port=int(Config.RO_DB_PORT),
+            database=Config.RO_DB_NAME,
+        )
+    return sqlalchemy.create_engine(url, hide_parameters=True, **kwargs)
 
 
 DB_ENGINE = create_engine()

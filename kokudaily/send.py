@@ -1,15 +1,15 @@
 import logging
 import os
 import smtplib
-import tempfile
 import zipfile
 from datetime import date
 from email.encoders import encode_base64
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from tempfile import gettempdir
 
+import pyarrow as pa
+import pyarrow.compute as pc
 import pyarrow.parquet as pq
 from kokudaily.config import Config
 from kokudaily.config import REGISTRY
@@ -113,6 +113,84 @@ def get_minio_client():
     return minio_client
 
 
+def _csv_candidates(column, candidates):
+    if not candidates:
+        return []
+    # Reuse Arrow's CSV converters, including their whitespace,
+    # boolean and time parsing rules, on one bounded column batch.
+    sink = pa.BufferOutputStream()
+    csv.write_csv(pa.table({"value": column}), sink)
+    buffer = sink.getvalue()
+    read_options = csv.ReadOptions(use_threads=False)
+    inferred = (
+        csv.read_csv(pa.BufferReader(buffer), read_options=read_options)
+        .schema.field(0)
+        .type
+    )
+    valid = []
+    for kind in candidates:
+        if pa.types.is_timestamp(kind) and not pa.types.is_null(inferred):
+            zoned = pa.types.is_timestamp(inferred) and bool(inferred.tz)
+            if bool(kind.tz) != zoned:
+                continue
+        try:
+            csv.read_csv(
+                pa.BufferReader(buffer),
+                read_options=read_options,
+                convert_options=csv.ConvertOptions(
+                    column_types={"value": kind}
+                ),
+            )
+        except pa.ArrowInvalid:
+            continue
+        valid.append(kind)
+    return valid
+
+
+def _parquet_types(path):
+    """Infer across the entire CSV with bounded batches before writing Parquet.
+
+    Arrow's streaming reader freezes types after its first block. Track the
+    documented inference candidates across all blocks so late non-null values
+    and numeric promotion retain the previous TableReader schema.
+    """
+    with csv.open_csv(path) as header:
+        names = header.schema.names
+    kinds = [
+        pa.int64(),
+        pa.bool_(),
+        pa.date32(),
+        pa.time32("s"),
+        pa.timestamp("s"),
+        pa.timestamp("ns"),
+        pa.timestamp("s", "UTC"),
+        pa.timestamp("ns", "UTC"),
+        pa.float64(),
+    ]
+    candidates = {name: list(kinds) for name in names}
+    present = {name: False for name in names}
+    options = csv.ConvertOptions(
+        column_types={name: pa.string() for name in names}
+    )
+    nulls = pa.array(options.null_values)
+    with csv.open_csv(path, convert_options=options) as batches:
+        for batch in batches:
+            for name, column in zip(names, batch.columns):
+                values = pc.if_else(
+                    pc.is_in(column, value_set=nulls), None, column
+                )
+                present[name] = present[name] or values.null_count < len(
+                    values
+                )
+                candidates[name] = _csv_candidates(column, candidates[name])
+    return {
+        name: (candidates[name][0] if candidates[name] else pa.string())
+        if present[name]
+        else pa.null()
+        for name in names
+    }
+
+
 def s3(target, report_name, **report):
     if not Config.MINIO_ACCESS_KEY:
         return
@@ -124,13 +202,14 @@ def s3(target, report_name, **report):
             f"{Config.MINIO_BUCKET} doesn't exits, so data cannot be uploaded."
         )
 
-    table = csv.read_csv(report.get("file"))
-
-    tmp = gettempdir()
-    temp_dir = os.path.join(tmp, "parquet_reports")
-    os.makedirs(temp_dir, exist_ok=True)
-    tempfile = os.path.join(temp_dir, f"{report_name}.parquet")
-    pq.write_table(table, tempfile)
+    # Keep conversion memory bounded and scratch beside the source CSV.
+    temp_dir = os.path.dirname(report["file"])
+    parquet_path = os.path.join(temp_dir, f"{report_name}.parquet")
+    options = csv.ConvertOptions(column_types=_parquet_types(report["file"]))
+    with csv.open_csv(report["file"], convert_options=options) as batches:
+        with pq.ParquetWriter(parquet_path, batches.schema) as writer:
+            for batch in batches:
+                writer.write_batch(batch)
 
     todays_date = date.today()
     metric_file_name = f"{Config.WAREHOUSE_PATH}/metric={report_name}/year={todays_date.year}/month={todays_date.month}/day={todays_date.day}/{report_name}.parquet"  # noqa
@@ -141,7 +220,7 @@ def s3(target, report_name, **report):
     minio_client.fput_object(
         bucket_name=Config.MINIO_BUCKET,
         object_name=metric_file_name,
-        file_path=tempfile,
+        file_path=parquet_path,
     )
 
 
@@ -160,7 +239,9 @@ def create_zip_archive(files_to_zip, zip_filename):
         LOG.warning("No files provided to zip.")
         return None
     try:
-        zip_filepath = os.path.join(tempfile.gettempdir(), zip_filename)
+        zip_filepath = os.path.join(
+            os.path.dirname(files_to_zip[0]), zip_filename
+        )
         LOG.info(f"Creating zip archive at: {zip_filepath}")
         with zipfile.ZipFile(zip_filepath, "w", zipfile.ZIP_DEFLATED) as zipf:
             for file_path in files_to_zip:
