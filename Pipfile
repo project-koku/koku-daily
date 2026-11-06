@@ -13,6 +13,8 @@ pytz = "*"
 app-common-python = "*"
 minio = "*"
 pyarrow = "*"
+certifi = ">=2026.10.19"  # floor: COST-8552 eMudhra distrust (fixed in 2026.10.19+)
+virtualenv = ">=21.14.13"  # floor: COST-8504 bash activate promptvars (fixed in 21.14.13+)
 
 [dev-packages]
 
